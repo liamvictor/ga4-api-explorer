@@ -9,7 +9,7 @@ def run_report(property_id, data_client, start_date, end_date):
     These are top-performing, 'sticky' pages.
     """
     
-    # 1. First API Call: Get data for all pages to calculate average views.
+    # 1. First API Call: Get data for all pages to calculate average views and create a views lookup map.
     try:
         all_pages_request = RunReportRequest(
             property=f"properties/{property_id}",
@@ -30,16 +30,18 @@ def run_report(property_id, data_client, start_date, end_date):
             "rows": [["No page data found to calculate averages."]]
         }
 
-    # Calculate the average screen page views
-    page_views_list = [int(row.metric_values[0].value) for row in all_pages_response.rows]
+    # Create a lookup map for page views and a list for averaging
+    page_views_map = {row.dimension_values[0].value: int(row.metric_values[0].value) for row in all_pages_response.rows}
+    page_views_list = list(page_views_map.values())
     average_views = statistics.mean(page_views_list) if page_views_list else 0
 
-    # 2. Second API Call: Get detailed data for pages with above-average traffic.
+    # 2. Second API Call: Get engagement rate for pages with above-average traffic.
+    # We cannot include a metric in the 'metrics' list if it's also used in a filter.
     try:
         request = RunReportRequest(
             property=f"properties/{property_id}",
             dimensions=[Dimension(name="pagePath")],
-            metrics=[Metric(name="screenPageViews"), Metric(name="engagementRate")],
+            metrics=[Metric(name="engagementRate")], # Remove screenPageViews from here
             date_ranges=[DateRange(start_date=start_date, end_date=end_date)],
             dimension_filter=FilterExpression(
                 filter=Filter(
@@ -63,8 +65,9 @@ def run_report(property_id, data_client, start_date, end_date):
     report_rows = []
     for row in response.rows:
         page_path = row.dimension_values[0].value
-        views = int(row.metric_values[0].value)
-        engagement_rate = float(row.metric_values[1].value) * 100
+        # Look up the screenPageViews from the map created in the first call
+        views = page_views_map.get(page_path, 0)
+        engagement_rate = float(row.metric_values[0].value) * 100
         
         report_rows.append([page_path, f"{views:,}", f"{engagement_rate:.2f}%"])
 
