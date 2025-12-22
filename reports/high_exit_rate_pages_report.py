@@ -1,0 +1,83 @@
+# reports/high_exit_rate_pages_report.py
+
+from google.analytics.data_v1beta.types import RunReportRequest, Dimension, Metric, OrderBy, Filter, FilterExpression, DateRange
+import statistics
+
+def run_report(property_id, data_client, start_date, end_date):
+    """
+    Runs a report to identify pages with a high exit rate, ignoring pages with below-average traffic.
+    In GA4, 'exit rate' is a more direct measure for this than the deprecated 'bounce rate'.
+    """
+    
+    # 1. First API Call: Get data for all pages to calculate average views.
+    try:
+        all_pages_request = RunReportRequest(
+            property=f"properties/{property_id}",
+            dimensions=[Dimension(name="pagePath")],
+            metrics=[Metric(name="screenPageViews")],
+            date_ranges=[DateRange(start_date=start_date, end_date=end_date)],
+            limit=100000 
+        )
+        all_pages_response = data_client.run_report(all_pages_request)
+    except Exception as e:
+        print(f"Error fetching all pages data for averaging: {e}")
+        return None
+
+    if not all_pages_response.rows:
+        return {
+            "title": "High Exit Rate Pages",
+            "headers": ["Status"],
+            "rows": [["No page data found to calculate averages."]]
+        }
+
+    # Calculate the average screen page views
+    page_views_list = [int(row.metric_values[0].value) for row in all_pages_response.rows]
+    average_views = statistics.mean(page_views_list) if page_views_list else 0
+
+    # 2. Second API Call: Get detailed data for pages with above-average traffic.
+    try:
+        request = RunReportRequest(
+            property=f"properties/{property_id}",
+            dimensions=[Dimension(name="pagePath")],
+            metrics=[Metric(name="screenPageViews"), Metric(name="exits")],
+            date_ranges=[DateRange(start_date=start_date, end_date=end_date)],
+            dimension_filter=FilterExpression(
+                filter=Filter(
+                    field_name="screenPageViews",
+                    numeric_filter=Filter.NumericFilter(
+                        operation=Filter.NumericFilter.Operation.GREATER_THAN,
+                        value=average_views
+                    )
+                )
+            ),
+            limit=10000
+        )
+        response = data_client.run_report(request)
+    except Exception as e:
+        print(f"Error running High Exit Rate Pages report: {e}")
+        return None
+
+    # Process the response and format it into the standardized dictionary.
+    report_headers = ["Page Path", "Screen Page Views", "Exits", "Exit Rate"]
+    
+    report_rows = []
+    for row in response.rows:
+        page_path = row.dimension_values[0].value
+        views = int(row.metric_values[0].value)
+        exits = int(row.metric_values[1].value)
+        
+        # Calculate exit rate, handle division by zero
+        exit_rate = (exits / views) * 100 if views > 0 else 0
+        
+        report_rows.append([page_path, f"{views:,}", f"{exits:,}", f"{exit_rate:.2f}%"])
+
+    # Sort the results by exit rate in descending order
+    report_rows.sort(key=lambda x: float(x[3].strip('%')), reverse=True)
+
+    report_data = {
+        "title": "High Exit Rate Pages (Above Average Traffic)",
+        "headers": report_headers,
+        "rows": report_rows,
+    }
+
+    return report_data
