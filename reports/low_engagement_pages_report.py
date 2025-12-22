@@ -1,12 +1,12 @@
-# reports/low_exit_rate_pages_report.py
+# reports/high_exit_rate_pages_report.py
 
 from google.analytics.data_v1beta.types import RunReportRequest, Dimension, Metric, OrderBy, Filter, FilterExpression, DateRange, NumericValue
 import statistics
 
 def run_report(property_id, data_client, start_date, end_date):
     """
-    Runs a report to identify pages with a low exit rate among pages with at least average traffic.
-    These are top-performing, 'sticky' pages.
+    Runs a report to identify pages with a low engagement rate, ignoring pages with below-average traffic.
+    A low engagement rate is the GA4 equivalent of a high bounce rate.
     """
     
     # 1. First API Call: Get data for all pages to calculate average views.
@@ -16,7 +16,7 @@ def run_report(property_id, data_client, start_date, end_date):
             dimensions=[Dimension(name="pagePath")],
             metrics=[Metric(name="screenPageViews")],
             date_ranges=[DateRange(start_date=start_date, end_date=end_date)],
-            limit=100000
+            limit=100000 
         )
         all_pages_response = data_client.run_report(all_pages_request)
     except Exception as e:
@@ -25,7 +25,7 @@ def run_report(property_id, data_client, start_date, end_date):
 
     if not all_pages_response.rows:
         return {
-            "title": "Low Exit Rate Pages",
+            "title": "Low Engagement Pages",
             "headers": ["Status"],
             "rows": [["No page data found to calculate averages."]]
         }
@@ -39,13 +39,13 @@ def run_report(property_id, data_client, start_date, end_date):
         request = RunReportRequest(
             property=f"properties/{property_id}",
             dimensions=[Dimension(name="pagePath")],
-            metrics=[Metric(name="screenPageViews"), Metric(name="exits")],
+            metrics=[Metric(name="screenPageViews"), Metric(name="engagementRate")],
             date_ranges=[DateRange(start_date=start_date, end_date=end_date)],
             dimension_filter=FilterExpression(
                 filter=Filter(
                     field_name="screenPageViews",
                     numeric_filter=Filter.NumericFilter(
-                        operation=Filter.NumericFilter.Operation.GREATER_THAN_OR_EQUAL,
+                        operation=Filter.NumericFilter.Operation.GREATER_THAN,
                         value=NumericValue(int64_value=int(average_views))
                     )
                 )
@@ -54,28 +54,25 @@ def run_report(property_id, data_client, start_date, end_date):
         )
         response = data_client.run_report(request)
     except Exception as e:
-        print(f"Error running Low Exit Rate Pages report: {e}")
+        print(f"Error running Low Engagement Pages report: {e}")
         return None
 
     # Process the response and format it into the standardized dictionary.
-    report_headers = ["Page Path", "Screen Page Views", "Exits", "Exit Rate"]
+    report_headers = ["Page Path", "Screen Page Views", "Engagement Rate"]
     
     report_rows = []
     for row in response.rows:
         page_path = row.dimension_values[0].value
         views = int(row.metric_values[0].value)
-        exits = int(row.metric_values[1].value)
+        engagement_rate = float(row.metric_values[1].value) * 100
         
-        # Calculate exit rate, handle division by zero
-        exit_rate = (exits / views) * 100 if views > 0 else 0
-        
-        report_rows.append([page_path, f"{views:,}", f"{exits:,}", f"{exit_rate:.2f}%"])
+        report_rows.append([page_path, f"{views:,}", f"{engagement_rate:.2f}%"])
 
-    # Sort the results by exit rate in ascending order to show the best pages first
-    report_rows.sort(key=lambda x: float(x[3].strip('%')), reverse=False)
+    # Sort the results by engagement rate in ascending order to show worst-performing pages first
+    report_rows.sort(key=lambda x: float(x[2].strip('%')), reverse=False)
 
     report_data = {
-        "title": "Low Exit Rate Pages (Above Average Traffic)",
+        "title": "Low Engagement Pages (Above Average Traffic)",
         "headers": report_headers,
         "rows": report_rows,
     }

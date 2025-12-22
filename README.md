@@ -105,8 +105,8 @@ Here is a list of the reports currently available and what they provide:
 *   **Top 25 Pages by Views:** Lists the top 25 most viewed pages on your site, indicating popular content.
 *   **Traffic Acquisition Report:** A detailed report showing session default channel group, session source/medium, total users, new users, engaged sessions, engagement rate, and conversions, providing a comprehensive view of traffic quality.
 *   **User Technology Report:** Provides insights into your audience's technology, including device category, operating system, browser, total users, engaged sessions, and engagement rate, useful for optimising compatibility and user experience.
-*   **High Exit Rate Pages Report:** Identifies pages with a high exit rate, filtering out pages with below-average traffic to focus on significant problem areas.
-*   **Low Exit Rate Pages Report:** The opposite of the above, this report finds your best-performing 'sticky' pages with low exit rates and high traffic.
+*   **Low Engagement Pages Report:** Identifies pages with a low engagement rate, filtering out pages with below-average traffic. This helps pinpoint underperforming pages that may require content or UX improvements.
+*   **High Engagement Pages Report:** The opposite of the above, this report finds your best-performing 'sticky' pages with high engagement rates and high traffic, highlighting what content resonates most with your users.
 
 ## How to Add a New Report
 
