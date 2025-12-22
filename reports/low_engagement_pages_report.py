@@ -78,6 +78,7 @@ def run_report(property_id, data_client, start_date, end_date):
         "title": "Low Engagement Pages (Above Average Traffic)",
         "headers": report_headers,
         "rows": report_rows,
+        "description": "This report shows pages with above-average traffic but a low engagement rate. A low engagement rate (the opposite of a 'bounce rate') indicates that visitors are leaving the page without interacting. These pages may be good candidates for content or user experience improvements."
     }
 
     return report_data

@@ -78,6 +78,7 @@ def run_report(property_id, data_client, start_date, end_date):
         "title": "High Engagement Pages (Above Average Traffic)",
         "headers": report_headers,
         "rows": report_rows,
+        "description": "This report shows your 'stickiest' pages—those with above-average traffic and a high engagement rate. A high engagement rate indicates that visitors are actively interacting with the content. These pages are performing well."
     }
 
     return report_data

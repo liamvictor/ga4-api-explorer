@@ -55,6 +55,7 @@ def print_to_console(report_data, selected_property_info=None, start_date=None, 
     headers = report_data.get("headers", [])
     rows = report_data.get("rows", [])
     title = report_data.get("title", "Report")
+    description = report_data.get("description") # Get the new description
     date_range_str = report_data.get("date_range", "")
 
     # Format numbers for display
@@ -67,7 +68,10 @@ def print_to_console(report_data, selected_property_info=None, start_date=None, 
         print(f"--- Property: {selected_property_info['display_name']} ({selected_property_info['property_id']}) ---")
     if date_range_str:
         print(f"--- Date Range: {date_range_str} ---")
-
+    
+    # Print the description if it exists
+    if description:
+        print(f"\n{description}\n")
 
     # Calculate column widths using formatted rows
     col_widths = [len(h) for h in headers]
@@ -134,6 +138,7 @@ def save_to_html(report_data, selected_property_info, start_date, end_date):
     headers = report_data.get("headers", [])
     rows = report_data.get("rows", [])
     report_title = report_data.get("title", "Report")
+    description = report_data.get("description") # Get the new description
 
     # Sanitize names according to user preferences
     sanitized_property_name = _sanitize_name(selected_property_info['display_name'])
@@ -160,12 +165,18 @@ def save_to_html(report_data, selected_property_info, start_date, end_date):
 
     # Generate table HTML
     table_html = _generate_table_html(headers, rows)
+    
+    # Generate description HTML (if description exists)
+    description_html = ""
+    if description:
+        description_html = f'<div class="alert alert-info" role="alert">{description}</div>'
 
     # Replace placeholders
     date_range_str = report_data.get("date_range", f"{start_date} to {end_date}")
     html_content = html_content.replace("{{ report_title }}", report_title)
     html_content = html_content.replace("{{ property_display_name }}", selected_property_info['display_name'])
     html_content = html_content.replace("{{ date_range }}", date_range_str)
+    html_content = html_content.replace("<!-- REPORT_DESCRIPTION_PLACEHOLDER -->", description_html)
     html_content = html_content.replace("<!-- REPORT_TABLE_PLACEHOLDER -->", table_html)
 
     try:
