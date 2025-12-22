@@ -78,7 +78,8 @@ def run_report(property_id, data_client, start_date, end_date):
         "title": "Low Engagement Pages (Above Average Traffic)",
         "headers": report_headers,
         "rows": report_rows,
-        "description": "This report shows pages with above-average traffic but a low engagement rate. A low engagement rate (the opposite of a 'bounce rate') indicates that visitors are leaving the page without interacting. These pages may be good candidates for content or user experience improvements."
+        "description": "This report shows pages with above-average traffic but a low engagement rate. A low engagement rate (the opposite of a 'bounce rate') indicates that visitors are leaving the page without interacting. These pages may be good candidates for content or user experience improvements.",
+        "detailed_description": "A session is considered engaged if the user does any one of the following:\n\n* Stays on your site for longer than 10 seconds.\n* Triggers a conversion event (like a purchase or form submission).\n* Views at least two pages."
     }
 
     return report_data
