@@ -43,7 +43,7 @@ def run_report(property_id, data_client, start_date, end_date):
             dimensions=[Dimension(name="pagePath")],
             metrics=[Metric(name="engagementRate")], # Remove screenPageViews from here
             date_ranges=[DateRange(start_date=start_date, end_date=end_date)],
-            dimension_filter=FilterExpression(
+            metric_filter=FilterExpression(
                 filter=Filter(
                     field_name="screenPageViews",
                     numeric_filter=Filter.NumericFilter(
