@@ -1,6 +1,6 @@
 # reports/high_exit_rate_pages_report.py
 
-from google.analytics.data_v1beta.types import RunReportRequest, Dimension, Metric, OrderBy, Filter, FilterExpression, DateRange
+from google.analytics.data_v1beta.types import RunReportRequest, Dimension, Metric, OrderBy, Filter, FilterExpression, DateRange, NumericValue
 import statistics
 
 def run_report(property_id, data_client, start_date, end_date):
@@ -46,7 +46,7 @@ def run_report(property_id, data_client, start_date, end_date):
                     field_name="screenPageViews",
                     numeric_filter=Filter.NumericFilter(
                         operation=Filter.NumericFilter.Operation.GREATER_THAN,
-                        value=average_views
+                        value=NumericValue(int64_value=int(average_views))
                     )
                 )
             ),
