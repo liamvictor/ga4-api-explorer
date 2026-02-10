@@ -29,10 +29,18 @@ def run_report(property_id, data_client, start_date, end_date):
     if not response.rows:
         return report_data # Return with empty rows
 
+    total_new_users = 0
+    total_engaged_sessions = 0
+
     for row in response.rows:
         channel = row.dimension_values[0].value
-        new_users = row.metric_values[0].value
-        engaged_sessions = row.metric_values[1].value
+        new_users = int(row.metric_values[0].value)
+        engaged_sessions = int(row.metric_values[1].value)
         report_data["rows"].append([channel, new_users, engaged_sessions])
+        total_new_users += new_users
+        total_engaged_sessions += engaged_sessions
+    
+    # Add a total row
+    report_data["rows"].append(["Total", total_new_users, total_engaged_sessions])
 
     return report_data
