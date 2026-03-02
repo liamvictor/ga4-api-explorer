@@ -26,16 +26,26 @@ A service account is a special type of Google account intended to represent a no
 6.  Click **CONTINUE**.
 7.  You can skip the "Grant users access to this service account" step for now. Click **DONE**.
 
-## 3. Grant Service Account Access to GA4 Property
+## 3. Grant Service Account Access in Google Analytics
 
-You now need to grant the newly created service account access to your Google Analytics 4 property.
+You now need to grant the newly created service account access to your Google Analytics 4 properties. You can do this at either the **Account level** (granting access to all properties within that account) or at the individual **Property level**. Granting access at the Account level is recommended if you want the service account to access all properties within it.
 
+### To Grant Access at the Account Level (Recommended)
+1.  Go to your [Google Analytics](https://analytics.google.com/) account.
+2.  Navigate to the **Admin** section.
+3.  In the "Account" column (the leftmost column), click on **Account Access Management**.
+4.  Click the **+** button to add a new user.
+5.  In the "Email address" field, paste the email address of the service account you created in the previous step (you can find this in the "Service Accounts" section of the Google Cloud Console).
+6.  Select the desired permissions. **"Viewer"** is sufficient for reading data.
+7.  Click **Add**.
+
+### To Grant Access at the Property Level
 1.  Go to your [Google Analytics](https://analytics.google.com/) account.
 2.  Navigate to the **Admin** section of your GA4 property.
 3.  In the "Property" column, click on **Property Access Management**.
 4.  Click the **+** button to add a new user.
-5.  In the "Email address" field, paste the email address of the service account you created in the previous step (you can find this in the "Service Accounts" section of the Google Cloud Console).
-6.  Select the desired permissions. "Viewer" is sufficient for reading data.
+5.  In the "Email address" field, paste the email address of the service account.
+6.  Select the desired permissions. **"Viewer"** is sufficient.
 7.  Click **Add**.
 
 ## 4. Set Up Your Local Environment
