@@ -221,3 +221,61 @@ def save_to_csv_and_html(report_data, selected_property_info, start_date, end_da
     """Saves the report data to both CSV and HTML files."""
     save_to_csv(report_data, selected_property_info, start_date, end_date)
     save_to_html(report_data, selected_property_info, start_date, end_date)
+
+def save_report_to_file(report_data, filename):
+    """Saves a formatted report to a single text file in the 'output' directory."""
+    if not report_data or not report_data.get("rows"):
+        print(f"  -> No data to save for {filename}.")
+        return
+
+    # Ensure output directory exists
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    filepath = os.path.join(output_dir, filename)
+
+    headers = report_data.get("headers", [])
+    rows = report_data.get("rows", [])
+    title = report_data.get("title", "Report")
+    date_range_str = report_data.get("date_range", "")
+
+    # Format numbers for display
+    formatted_rows = []
+    for row in rows:
+        formatted_rows.append([_format_value(cell) for cell in row])
+
+    # Calculate column widths
+    col_widths = [len(h) for h in headers]
+    for row in formatted_rows:
+        for i, cell in enumerate(row):
+            if i < len(col_widths) and len(str(cell)) > col_widths[i]:
+                col_widths[i] = len(str(cell))
+
+    # Build the report string
+    report_string = []
+    report_string.append(f"--- {title} ---")
+    if date_range_str:
+        report_string.append(f"--- Date Range: {date_range_str} ---")
+    report_string.append("\n")
+
+    # Header line
+    header_line = " | ".join(headers[i].ljust(col_widths[i]) for i in range(len(headers)))
+    report_string.append(header_line)
+    report_string.append("-" * len(header_line))
+
+    # Row lines
+    for row in formatted_rows:
+        row_line = " | ".join(str(row[i]).ljust(col_widths[i]) for i in range(len(row)))
+        report_string.append(row_line)
+    
+    report_string.append("-" * len(header_line))
+
+    explanation = report_data.get("explanation")
+    if explanation:
+        report_string.append(f"\n{explanation}")
+
+    # Write to file
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("\n".join(report_string))
+    except Exception as e:
+        print(f"  -> Error saving text file: {e}")
