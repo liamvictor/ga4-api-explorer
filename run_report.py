@@ -164,8 +164,12 @@ def get_selected_property(cli_property_id=None):
             print("Invalid selection. Please enter a valid number.")
 
 def get_selected_report(reports, cli_report_name=None):
-    """Presents an interactive menu to select an available report."""
+    """Presents an interactive menu to select an available report, including an option to run all reports."""
     if cli_report_name:
+        if cli_report_name.lower() == 'all':
+            print("Selected to run all available reports via command-line.")
+            return {"name": "All Reports", "module": "all"}
+            
         selected_report = _get_report_by_name(cli_report_name)
         if selected_report:
             print(f"Using report from command-line: {selected_report['name']}")
@@ -175,7 +179,13 @@ def get_selected_report(reports, cli_report_name=None):
 
     print("\nAvailable Reports:")
     numbered_reports = {}
-    for i, (report_key, report_info) in enumerate(sorted(reports.items(), key=lambda item: item[1]['name']), 1):
+    
+    # Add an option to run all reports
+    print("1. All Reports")
+    numbered_reports['1'] = {"name": "All Reports", "module": "all"}
+    
+    # List individual reports
+    for i, (report_key, report_info) in enumerate(sorted(reports.items(), key=lambda item: item[1]['name']), 2):
         numbered_reports[str(i)] = report_info
         print(f"{i}. {report_info['name']}")
     
@@ -405,6 +415,39 @@ def run_report_for_all_properties(no_cache=False):
 
     print("\nFinished running aggregated report for all properties.")
 
+def run_all_reports_for_property(selected_property_info, cli_start_date=None, cli_end_date=None, cli_output_format=None, no_cache=False):
+    """Runs all available reports for a single property."""
+    print(f"\nRunning all available reports for property: {selected_property_info['display_name']}")
+
+    available_reports = get_available_reports()
+    if not available_reports:
+        print("No reports found in the 'reports' directory.")
+        return
+
+    # Get date range and output format once for all reports
+    start_date, end_date, _, verbose_date_range_str = get_selected_date_range(cli_start_date, cli_end_date)
+    output_function = get_selected_output_format(cli_output_format)
+    
+    # Loop through all available reports and run them
+    for report_key, report_info in sorted(available_reports.items(), key=lambda item: item[1]['name']):
+        if report_info['module'] == 'all': continue # Skip the 'All Reports' placeholder
+        
+        report_data = run_dynamic_report(
+            report_info['module'],
+            selected_property_info['property_id'],
+            start_date,
+            end_date,
+            no_cache=no_cache
+        )
+        
+        if report_data:
+            report_data['date_range'] = verbose_date_range_str
+            output_function(report_data, selected_property_info, start_date, end_date)
+        else:
+            print(f"Failed to generate data for report: {report_info['name']}")
+
+    print(f"\nFinished running all reports for {selected_property_info['display_name']}.")
+
 def get_next_action():
     """Waits for a single key press and returns the selected action."""
     print("Enter your choice: ", end="", flush=True)
@@ -440,11 +483,32 @@ def main():
     parser.add_argument('-ed', '--end-date', type=str, help='Specify the end date for the report in YYYY-MM-DD format.')
     parser.add_argument('-o', '--output-format', type=str, choices=['console', 'csv', 'html', 'csv_html'], help='Specify the output format (console, csv, html, csv_html) for non-interactive mode.')
     parser.add_argument('--run-all-properties-report', action='store_true', help='Run the Session Source / Medium report for all available properties.')
+    parser.add_argument('--run-all-reports', action='store_true', help='Run all available reports for a single specified property.')
     parser.add_argument('--no-cache', action='store_true', help='Force a fresh run of the report, ignoring any cached results.')
     args = parser.parse_args()
 
     if args.run_all_properties_report:
         run_report_for_all_properties(no_cache=args.no_cache)
+        return
+
+    # Handle the new --run-all-reports argument
+    if args.run_all_reports:
+        if not args.property_id:
+            print("Error: --run-all-reports requires a --property-id to be specified.")
+            return
+
+        selected_property_info = get_property_info_by_id(args.property_id)
+        if not selected_property_info:
+            print(f"Error: Invalid or inaccessible property ID '{args.property_id}'.")
+            return
+            
+        run_all_reports_for_property(
+            selected_property_info,
+            cli_start_date=args.start_date,
+            cli_end_date=args.end_date,
+            cli_output_format=args.output_format,
+            no_cache=args.no_cache
+        )
         return
 
     while True: # Main loop for selecting properties
@@ -480,10 +544,42 @@ def main():
             
             if not args.report: # If no report from command line or it was invalid
                 selected_report = get_selected_report(available_reports)
-            
+
             if not selected_report:
                 break # Exit this loop if no report selected
 
+            # Handle running all reports
+            if selected_report['module'] == 'all':
+                run_all_reports_for_property(
+                    selected_property_info,
+                    cli_start_date=args.start_date,
+                    cli_end_date=args.end_date,
+                    cli_output_format=args.output_format,
+                    no_cache=args.no_cache
+                )
+                # After running all reports, decide what to do next
+                if args.property_id: # If in non-interactive mode, exit
+                    print("Completed running all reports in non-interactive mode. Exiting.")
+                    return
+                # In interactive mode, ask the user what to do next
+                print("\nWhat would you like to do next?")
+                print("(C)hange property")
+                print("(Q)uit or press Esc")
+                
+                # Simplified next action for this context
+                while True:
+                    next_action = input("Enter your choice: ").upper()
+                    if next_action in ["C", "Q"]:
+                        break
+                    else:
+                        print("Invalid choice. Please enter C or Q.")
+                
+                if next_action == "C":
+                    break # Break inner loop to change property
+                elif next_action == "Q":
+                    print("\nExiting...")
+                    return # Exit script
+            
             # 3. Select Date Range (interactive or via command-line arg)
             start_date, end_date, friendly_date_range_str, verbose_date_range_str = None, None, None, None
             if args.start_date or args.end_date: # If any date arg is provided, try to use them
