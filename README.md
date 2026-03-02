@@ -55,7 +55,7 @@ py run_report.py
 
 You will be guided through a series of interactive menus to:
 1.  Select a GA4 property (accounts and properties are sorted).
-2.  Select an available report (reports are sorted, e.g., "Top Cities Report", "Top Pages Report", "Session Source / Medium Report").
+2.  Select an available report (reports are sorted, e.g., "Top Cities Report", "Top Pages Report", "Session Source / Medium Report", or "All Reports").
 3.  Select a date range (e.g., "Last Calendar Month", "Custom Date Range").
 4.  Choose your desired output format (Console, CSV, HTML, CSV & HTML - options are sorted alphabetically).
 
@@ -68,17 +68,22 @@ You can bypass the interactive menus by providing arguments directly on the comm
 **Available Flags:**
 
 *   `-p`, `--property-id <PROPERTY_ID>`: Specify a GA4 property ID (e.g., `309716917`).
-*   `-r`, `--report <REPORT_NAME>`: Specify the report module name (e.g., `top_cities_report`, `top_pages_report`).
+*   `-r`, `--report <REPORT_NAME>`: Specify the report module name (e.g., `top_cities_report`, `top_pages_report`, or `all` to run all reports).
 *   `-sd`, `--start-date <YYYY-MM-DD>`: Specify the start date for the report.
 *   `-ed`, `--end-date <YYYY-MM-DD>`: Specify the end date for the report.
 *   `-o`, `--output-format <FORMAT>`: Specify the output format. Choices: `console`, `csv`, `html`, `csv_html`.
 *   `--run-all-properties-report`: Generates a single, aggregated Session Source / Medium report (totalUsers, newUsers) for all available properties.
+*   `--run-all-reports`: Run all available reports for a single specified property. Requires `--property-id`.
 
 **Examples:**
 
 *   **Generate a single aggregated Session Source / Medium report for all properties:**
     ```bash
     py run_report.py --run-all-properties-report
+    ```
+*   **Run all reports for a specific property:**
+    ```bash
+    py run_report.py --run-all-reports -p 309716917
     ```
 
 *   **Fully Non-Interactive Report (CSV for November 2025):**
@@ -105,8 +110,6 @@ Here is a list of the reports currently available and what they provide:
 *   **Top 25 Pages by Views:** Lists the top 25 most viewed pages on your site, indicating popular content.
 *   **Traffic Acquisition Report:** A detailed report showing session default channel group, session source/medium, total users, new users, engaged sessions, engagement rate, and conversions, providing a comprehensive view of traffic quality.
 *   **User Technology Report:** Provides insights into your audience's technology, including device category, operating system, browser, total users, engaged sessions, and engagement rate, useful for optimising compatibility and user experience.
-*   **Low Engagement Pages Report:** Identifies pages with a low engagement rate, filtering out pages with below-average traffic. This helps pinpoint underperforming pages that may require content or UX improvements.
-*   **High Engagement Pages Report:** The opposite of the above, this report finds your best-performing 'sticky' pages with high engagement rates and high traffic, highlighting what content resonates most with your users.
 
 ## How to Add a New Report
 
