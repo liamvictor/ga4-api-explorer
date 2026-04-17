@@ -104,6 +104,7 @@ You can bypass the interactive menus by providing arguments directly on the comm
 
 Here is a list of the reports currently available and what they provide:
 
+*   **AI Traffic Acquisition Report:** Isolates and details traffic from known AI discovery tools and chatbots (e.g., ChatGPT, Gemini, Perplexity), helping you measure your visibility in generative search.
 *   **Channel Overview Report:** Shows new users and engaged sessions broken down by your GA4 default channel groupings.
 *   **Landing Pages Report:** Lists the top 25 landing pages by sessions, including active users, new users, and engagement rate.
 *   **Lead Quality by Channel Report:** Focuses on lead generation by combining total traffic (sessions, active users) with specific 'generate_lead' event counts and calculating a lead conversion rate for each channel.
