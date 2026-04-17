@@ -11,7 +11,8 @@
         .card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; margin-bottom: 2rem; }
         .header-section { background: #212529; color: white; padding: 2rem 0; margin-bottom: 2rem; }
         .legend-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .channel-chip { cursor: pointer; border: 1px solid #dee2e6; border-radius: 20px; padding: 2px 12px; margin: 2px; display: inline-block; font-size: 0.85rem; transition: all 0.2s; }
+        .channel-chip { cursor: pointer; border: 1px solid #dee2e6; border-radius: 20px; padding: 2px 12px; margin: 2px; display: inline-block; font-size: 0.85rem; transition: all 0.2s; background: white; }
+        .channel-chip:hover { border-color: #0d6efd; }
         .channel-chip.active { background-color: #0d6efd; color: white; border-color: #0d6efd; }
     </style>
 </head>
@@ -29,18 +30,19 @@
     <div class="card">
         <div class="card-body">
             <div class="row mb-4">
-                <div class="col-md-4">
-                    <label for="metricSelect" class="form-label fw-bold">1. Rank By Metric:</label>
+                <div class="col-md-4 border-end">
+                    <label for="metricSelect" class="form-label fw-bold">1. Rank & Default to Top 5:</label>
                     <select id="metricSelect" class="form-select">
                         <option value="sessions" selected>Sessions</option>
                         <option value="engaged">Engaged Sessions</option>
                         <option value="users">Active Users</option>
                         <option value="leads">Leads</option>
                     </select>
+                    <div class="form-text mt-2">Changing this resets selection to the top 5 for this metric.</div>
                 </div>
-                <div class="col-md-8">
-                    <label class="form-label fw-bold">2. Manual Comparison (Add/Remove Channels):</label>
-                    <div id="channelSelector" class="border p-2 rounded bg-light" style="max-height: 100px; overflow-y: auto;">
+                <div class="col-md-8 px-4">
+                    <label class="form-label fw-bold">2. Customise Comparison (Click to toggle):</label>
+                    <div id="channelSelector" class="p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
                         {% for channel in channels %}
                         <div class="channel-chip" data-channel="{{ channel }}">{{ channel }}</div>
                         {% endfor %}
@@ -67,7 +69,7 @@
     const rawData = {{ json_data | safe }};
     const months = {{ months | safe }};
     const allChannels = {{ channels | safe }};
-    let manualChannels = new Set();
+    let activeChannels = new Set();
     let chart = null;
 
     const metricLabels = {
@@ -81,41 +83,47 @@
         '#0d6efd', '#dc3545', '#198754', '#ffc107', '#0dcaf0', '#6610f2', '#fd7e14', '#20c997', '#e83e8c', '#6f42c1'
     ];
 
-    function updateView() {
-        const metricKey = document.getElementById('metricSelect').value;
-        
-        // 1. Calculate totals per channel to identify "Natural Top 5"
-        const channelTotals = allChannels.map(ch => {
+    function calculateTotals(metricKey) {
+        return allChannels.map(ch => {
             const total = months.reduce((sum, m) => {
                 const val = (rawData[ch] && rawData[ch][m]) ? Number(rawData[ch][m][metricKey]) : 0;
                 return sum + val;
             }, 0);
             return { name: ch, total: total };
         });
+    }
 
-        // 2. Determine final list: Top 5 + Manual Selection
-        const top5 = channelTotals.sort((a, b) => b.total - a.total).slice(0, 5).map(c => c.name);
+    function onMetricChange() {
+        const metricKey = document.getElementById('metricSelect').value;
+        const totals = calculateTotals(metricKey);
         
-        // Combine sets to ensure uniqueness
-        let displayChannels = new Set([...top5, ...manualChannels]);
+        // Reset selection to the new Top 5
+        const top5 = totals.sort((a, b) => b.total - a.total).slice(0, 5).map(c => c.name);
+        activeChannels = new Set(top5);
         
-        // Convert back to sorted list of objects with totals for the table
-        const finalChannelList = Array.from(displayChannels).map(name => {
-            return channelTotals.find(ct => ct.name === name);
-        }).sort((a, b) => b.total - a.total);
+        updateView();
+    }
 
-        // 3. Update Chips UI
+    function updateView() {
+        const metricKey = document.getElementById('metricSelect').value;
+        const allTotals = calculateTotals(metricKey);
+
+        // Filter all totals down to only what is in activeChannels
+        const displayDataList = allTotals.filter(ct => activeChannels.has(ct.name))
+                                         .sort((a, b) => b.total - a.total);
+
+        // Update Chips UI
         document.querySelectorAll('.channel-chip').forEach(chip => {
             const chName = chip.getAttribute('data-channel');
-            if (displayChannels.has(chName)) {
+            if (activeChannels.has(chName)) {
                 chip.classList.add('active');
             } else {
                 chip.classList.remove('active');
             }
         });
 
-        // 4. Prepare Chart Datasets
-        const datasets = finalChannelList.map((ch, index) => {
+        // Prepare Chart Datasets
+        const datasets = displayDataList.map((ch, index) => {
             const dataPoints = months.map(m => (rawData[ch.name] && rawData[ch.name][m]) ? Number(rawData[ch.name][m][metricKey]) : 0);
             return {
                 label: ch.name,
@@ -148,12 +156,12 @@
             }
         });
 
-        // 5. Update Table
+        // Update Table
         let html = '<table class="table table-striped"><thead><tr><th>Channel</th><th>Total ' + metricLabels[metricKey] + '</th>';
         months.forEach(m => html += '<th>' + m + '</th>');
         html += '</tr></thead><tbody>';
 
-        finalChannelList.forEach((ch, index) => {
+        displayDataList.forEach((ch, index) => {
             html += `<tr>
                 <td class="fw-bold"><span class="legend-dot" style="background:${colors[index % colors.length]}"></span>${ch.name}</td>
                 <td class="table-primary fw-bold">${ch.total.toLocaleString()}</td>`;
@@ -163,25 +171,32 @@
             });
             html += '</tr>';
         });
+        
+        if (displayDataList.length === 0) {
+            html += '<tr><td colspan="' + (months.length + 2) + '" class="text-center p-4 text-muted">No channels selected. Please click the chips above to add data to the chart.</td></tr>';
+        }
+
         html += '</tbody></table>';
         document.getElementById('tableContent').innerHTML = html;
     }
 
-    // Toggle manual inclusion
+    // Toggle channel inclusion
     document.querySelectorAll('.channel-chip').forEach(chip => {
         chip.addEventListener('click', function() {
             const chName = this.getAttribute('data-channel');
-            if (manualChannels.has(chName)) {
-                manualChannels.delete(chName);
+            if (activeChannels.has(chName)) {
+                activeChannels.delete(chName);
             } else {
-                manualChannels.add(chName);
+                activeChannels.add(chName);
             }
             updateView();
         });
     });
 
-    document.getElementById('metricSelect').addEventListener('change', updateView);
-    updateView();
+    document.getElementById('metricSelect').addEventListener('change', onMetricChange);
+    
+    // Initial load
+    onMetricChange();
 </script>
 
 </body>
