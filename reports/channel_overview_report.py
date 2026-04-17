@@ -3,6 +3,7 @@ from google.analytics.data_v1beta.types import RunReportRequest, DateRange, Dime
 def run_report(property_id, data_client, start_date, end_date):
     """
     Runs an expanded Channel Overview report including traffic, engagement, and lead data.
+    Metrics are ordered: Sessions, Engaged Sessions, Engagement Rate, Active Users, New Users, Leads.
     """
     
     # Request 1: Traffic and Engagement
@@ -11,10 +12,10 @@ def run_report(property_id, data_client, start_date, end_date):
         dimensions=[Dimension(name="sessionDefaultChannelGroup")],
         metrics=[
             Metric(name="sessions"),
-            Metric(name="activeUsers"),
-            Metric(name="newUsers"),
             Metric(name="engagedSessions"),
-            Metric(name="engagementRate")
+            Metric(name="engagementRate"),
+            Metric(name="activeUsers"),
+            Metric(name="newUsers")
         ],
         date_ranges=[DateRange(start_date=start_date, end_date=end_date)],
         order_bys=[{"dimension": {"dimension_name": "sessionDefaultChannelGroup"}, "desc": False}],
@@ -37,15 +38,15 @@ def run_report(property_id, data_client, start_date, end_date):
     # Standardized report data structure
     report_data = {
         "title": "Channel Overview Report",
-        "headers": ["Channel", "Sessions", "Active Users", "New Users", "Engaged Sessions", "Engagement Rate", "Leads"],
+        "headers": ["Channel", "Sessions", "Engaged Sessions", "Engagement Rate", "Active Users", "New Users", "Leads"],
         "rows": [],
         "explanation": (
             "**Metric Definitions:**\n"
             "* **Sessions:** The number of sessions that began on your site or app.\n"
-            "* **Active Users:** The number of distinct users who visited your site or app and had an engaged session.\n"
-            "* **New Users:** The number of users who interacted with your site for the first time.\n"
             "* **Engaged Sessions:** Sessions lasting >10s, or with a conversion, or with 2+ page views.\n"
             "* **Engagement Rate:** The percentage of sessions that were engaged sessions.\n"
+            "* **Active Users:** The number of distinct users who visited your site or app and had an engaged session.\n"
+            "* **New Users:** The number of users who interacted with your site for the first time.\n"
             "* **Leads:** The total count of 'generate_lead' events."
         )
     }
@@ -70,24 +71,24 @@ def run_report(property_id, data_client, start_date, end_date):
     for row in traffic_response.rows:
         channel = row.dimension_values[0].value
         sessions = row.metric_values[0].value
-        active_users = row.metric_values[1].value
-        new_users = row.metric_values[2].value
-        engaged_sessions = row.metric_values[3].value
+        engaged_sessions = row.metric_values[1].value
         
         try:
-            engagement_rate = f"{float(row.metric_values[4].value) * 100:.2f}%"
+            engagement_rate = f"{float(row.metric_values[2].value) * 100:.2f}%"
         except (ValueError, TypeError):
-            engagement_rate = row.metric_values[4].value
+            engagement_rate = row.metric_values[2].value
             
+        active_users = row.metric_values[3].value
+        new_users = row.metric_values[4].value
         leads = lead_counts.get(channel, "0")
             
         report_data["rows"].append([
             channel,
             sessions,
-            active_users,
-            new_users,
             engaged_sessions,
             engagement_rate,
+            active_users,
+            new_users,
             leads
         ])
 
