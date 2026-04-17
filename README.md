@@ -114,7 +114,7 @@ Here is a list of the reports currently available and what they provide:
 *   **Top 5 Cities by Active Users:** Ranks the top 5 cities based on active users, providing geographical insights into your audience.
 *   **Top 25 Pages by Views:** Lists the top 25 most viewed pages on your site, indicating popular content.
 *   **Traffic Acquisition Report:** A detailed report showing session default channel group, session source/medium, total users, new users, engaged sessions, engagement rate, and conversions, providing a comprehensive view of traffic quality.
-*   **User Technology Report:** Provides insights into your audience's technology, including device category, operating system, browser, total users, engaged sessions, and engagement rate, useful for optimising compatibility and user experience.
+*   **User Technology Report:** Provides insights into your audience's technology, including device category, operating system, browser, total users, engaged sessions, engagement rate, and bounce rate, useful for optimising compatibility and user experience.
 
 ## How to Add a New Report
 
