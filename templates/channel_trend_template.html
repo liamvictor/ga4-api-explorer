@@ -9,7 +9,6 @@
     <style>
         body { background-color: #f8f9fa; }
         .card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; margin-bottom: 2rem; }
-        .table-container { background: white; padding: 1.5rem; border-radius: 8px; }
         .header-section { background: #212529; color: white; padding: 2rem 0; margin-bottom: 2rem; }
     </style>
 </head>
@@ -28,11 +27,29 @@
         <div class="card-body">
             <div class="row mb-4">
                 <div class="col-md-4">
-                    <label for="channelSelect" class="form-label fw-bold">Select Channel to View Trend:</label>
+                    <label for="channelSelect" class="form-label fw-bold">Select Channel:</label>
                     <select id="channelSelect" class="form-select">
                         {% for channel in channels %}
                         <option value="{{ channel }}">{{ channel }}</option>
                         {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="metric1Select" class="form-label fw-bold">Primary Metric (Left Axis):</label>
+                    <select id="metric1Select" class="form-select">
+                        <option value="sessions" selected>Sessions</option>
+                        <option value="engaged">Engaged Sessions</option>
+                        <option value="users">Active Users</option>
+                        <option value="leads">Leads</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="metric2Select" class="form-label fw-bold">Secondary Metric (Right Axis):</label>
+                    <select id="metric2Select" class="form-select">
+                        <option value="leads" selected>Leads</option>
+                        <option value="sessions">Sessions</option>
+                        <option value="engaged">Engaged Sessions</option>
+                        <option value="users">Active Users</option>
                     </select>
                 </div>
             </div>
@@ -44,7 +61,7 @@
 
     <div class="card">
         <div class="card-body">
-            <h3 id="tableTitle">Data for: All Channels</h3>
+            <h3 id="tableTitle">Monthly Trend</h3>
             <div id="tableContent" class="table-responsive">
                 <!-- Table will be injected here -->
             </div>
@@ -57,10 +74,28 @@
     const months = {{ months | safe }};
     let chart = null;
 
-    function updateView(channel) {
+    const metricLabels = {
+        sessions: 'Sessions',
+        engaged: 'Engaged Sessions',
+        users: 'Active Users',
+        leads: 'Leads'
+    };
+
+    const metricColors = {
+        sessions: { border: '#0d6efd', bg: 'rgba(13, 110, 253, 0.1)' },
+        engaged: { border: '#198754', bg: 'rgba(25, 135, 84, 0.1)' },
+        users: { border: '#fd7e14', bg: 'rgba(253, 126, 20, 0.1)' },
+        leads: { border: '#dc3545', bg: 'rgba(220, 53, 69, 0.1)' }
+    };
+
+    function updateView() {
+        const channel = document.getElementById('channelSelect').value;
+        const m1Key = document.getElementById('metric1Select').value;
+        const m2Key = document.getElementById('metric2Select').value;
+        
         const data = rawData[channel];
-        const sessions = months.map(m => data[m] ? data[m].sessions : 0);
-        const leads = months.map(m => data[m] ? data[m].leads : 0);
+        const m1Data = months.map(m => data[m] ? data[m][m1Key] : 0);
+        const m2Data = months.map(m => data[m] ? data[m][m2Key] : 0);
 
         // Update Chart
         const ctx = document.getElementById('trendChart').getContext('2d');
@@ -72,18 +107,19 @@
                 labels: months,
                 datasets: [
                     {
-                        label: 'Sessions',
-                        data: sessions,
-                        borderColor: '#0d6efd',
-                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        label: metricLabels[m1Key],
+                        data: m1Data,
+                        borderColor: metricColors[m1Key].border,
+                        backgroundColor: metricColors[m1Key].bg,
                         fill: true,
-                        tension: 0.3
+                        tension: 0.3,
+                        yAxisID: 'y'
                     },
                     {
-                        label: 'Leads',
-                        data: leads,
-                        borderColor: '#dc3545',
-                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        label: metricLabels[m2Key],
+                        data: m2Data,
+                        borderColor: metricColors[m2Key].border,
+                        backgroundColor: metricColors[m2Key].bg,
                         fill: true,
                         tension: 0.3,
                         yAxisID: 'y1'
@@ -94,8 +130,16 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, title: { display: true, text: 'Sessions' } },
-                    y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Leads' } }
+                    y: { 
+                        beginAtZero: true, 
+                        title: { display: true, text: metricLabels[m1Key] } 
+                    },
+                    y1: { 
+                        beginAtZero: true, 
+                        position: 'right', 
+                        grid: { drawOnChartArea: false }, 
+                        title: { display: true, text: metricLabels[m2Key] } 
+                    }
                 }
             }
         });
@@ -118,10 +162,12 @@
         document.getElementById('tableTitle').innerText = `Monthly Trend: ${channel}`;
     }
 
-    document.getElementById('channelSelect').addEventListener('change', (e) => updateView(e.target.value));
+    document.getElementById('channelSelect').addEventListener('change', updateView);
+    document.getElementById('metric1Select').addEventListener('change', updateView);
+    document.getElementById('metric2Select').addEventListener('change', updateView);
     
     // Initial load
-    updateView(document.getElementById('channelSelect').value);
+    updateView();
 </script>
 
 </body>
