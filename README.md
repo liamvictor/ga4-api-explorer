@@ -55,7 +55,7 @@ py run_report.py
 
 You will be guided through a series of interactive menus to:
 1.  Select a GA4 property (accounts and properties are sorted).
-2.  Select an available report (reports are sorted, e.g., "Top Cities Report", "Top Pages Report", "Session Source / Medium Report").
+2.  Select an available report (reports are sorted, e.g., "Top Cities Report", "Top Pages Report", "Session Source / Medium Report", or "All Reports").
 3.  Select a date range (e.g., "Last Calendar Month", "Custom Date Range").
 4.  Choose your desired output format (Console, CSV, HTML, CSV & HTML - options are sorted alphabetically).
 
@@ -68,17 +68,22 @@ You can bypass the interactive menus by providing arguments directly on the comm
 **Available Flags:**
 
 *   `-p`, `--property-id <PROPERTY_ID>`: Specify a GA4 property ID (e.g., `309716917`).
-*   `-r`, `--report <REPORT_NAME>`: Specify the report module name (e.g., `top_cities_report`, `top_pages_report`).
+*   `-r`, `--report <REPORT_NAME>`: Specify the report module name (e.g., `top_cities_report`, `top_pages_report`, or `all` to run all reports).
 *   `-sd`, `--start-date <YYYY-MM-DD>`: Specify the start date for the report.
 *   `-ed`, `--end-date <YYYY-MM-DD>`: Specify the end date for the report.
 *   `-o`, `--output-format <FORMAT>`: Specify the output format. Choices: `console`, `csv`, `html`, `csv_html`.
 *   `--run-all-properties-report`: Generates a single, aggregated Session Source / Medium report (totalUsers, newUsers) for all available properties.
+*   `--run-all-reports`: Run all available reports for a single specified property. Requires `--property-id`.
 
 **Examples:**
 
 *   **Generate a single aggregated Session Source / Medium report for all properties:**
     ```bash
     py run_report.py --run-all-properties-report
+    ```
+*   **Run all reports for a specific property:**
+    ```bash
+    py run_report.py --run-all-reports -p 309716917
     ```
 
 *   **Fully Non-Interactive Report (CSV for November 2025):**
@@ -100,6 +105,8 @@ You can bypass the interactive menus by providing arguments directly on the comm
 Here is a list of the reports currently available and what they provide:
 
 *   **Channel Overview Report:** Shows new users and engaged sessions broken down by your GA4 default channel groupings.
+*   **Landing Pages Report:** Lists the top 25 landing pages by sessions, including active users, new users, and engagement rate.
+*   **Lead Quality by Channel Report:** Focuses on lead generation by combining total traffic (sessions, active users) with specific 'generate_lead' event counts and calculating a lead conversion rate for each channel.
 *   **Session Source / Medium Report:** Details total users and new users based on the session's source and medium (e.g., "google / organic", "facebook / cpc").
 *   **Top 5 Cities by Active Users:** Ranks the top 5 cities based on active users, providing geographical insights into your audience.
 *   **Top 25 Pages by Views:** Lists the top 25 most viewed pages on your site, indicating popular content.

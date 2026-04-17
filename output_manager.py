@@ -46,6 +46,39 @@ def _generate_table_html(headers, rows):
     )
     return table_html
 
+def _markdown_to_html(text):
+    """A simple markdown to HTML converter for the explanation text."""
+    if not text:
+        return ""
+    
+    lines = text.strip().split('\n')
+    html_lines = []
+    in_list = False
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Convert bold syntax (**text**) to <strong>text</strong>
+        line = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', line)
+
+        if line.startswith('* '):
+            if not in_list:
+                html_lines.append('<ul>')
+                in_list = True
+            html_lines.append(f'<li>{line[2:]}</li>')
+        else:
+            if in_list:
+                html_lines.append('</ul>')
+                in_list = False
+            html_lines.append(f'<p>{line}</p>')
+            
+    if in_list:
+        html_lines.append('</ul>')
+        
+    return ''.join(html_lines)
+
 def print_to_console(report_data, selected_property_info=None, start_date=None, end_date=None): # Match signature
     """Prints the report data in a formatted table to the console."""
     if not report_data or not report_data.get("rows"):
@@ -88,6 +121,10 @@ def print_to_console(report_data, selected_property_info=None, start_date=None, 
     
     print("-" * len(header_line))
 
+    explanation = report_data.get("explanation")
+    if explanation:
+        print(f"\n{explanation}")
+
 def save_to_csv(report_data, selected_property_info, start_date, end_date):
     """Saves the report data to a CSV file in a property-specific subdirectory within 'output'."""
     if not report_data or not report_data.get("rows"):
@@ -122,8 +159,62 @@ def save_to_csv(report_data, selected_property_info, start_date, end_date):
         print(f"Error saving CSV file: {e}")
 
 
+def _save_historical_report_to_html(report_data, property_info, start_date, end_date):
+    """Saves a historical report to an HTML file."""
+    if not property_info or 'display_name' not in property_info or 'property_id' not in property_info:
+        print("Error: Property information is incomplete. Cannot save HTML report.")
+        return
+
+    property_name = property_info['display_name']
+    property_id = property_info['property_id']
+    title = report_data.get('title', 'GA4 Report')
+    
+    # Sanitize property_name for filename
+    sanitized_property_name = "".join(c for c in property_name if c.isalnum() or c in (' ', '_')).rstrip()
+    
+    filename = f"{title.replace(' ', '_')}_{sanitized_property_name}_{start_date}_to_{end_date}.html"
+    
+    # Ensure the 'output' directory exists
+    output_dir = 'output'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    filepath = os.path.join(output_dir, filename)
+
+    try:
+        from jinja2 import Environment, FileSystemLoader
+        env = Environment(loader=FileSystemLoader('templates'))
+        template = env.get_template('historical_report_template.html')
+        
+        html_content = template.render(
+            title=title,
+            property_name=property_name,
+            property_id=property_id,
+            date_range=report_data.get('date_range', f'{start_date} to {end_date}'),
+            table_data=report_data.get('table_data', {}),
+            chart_data=report_data.get('chart_data', {}),
+            months=report_data.get('months', []),
+            incomplete_months=report_data.get('incomplete_months', {}),
+            explanation=report_data.get('explanation', '')
+        )
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+            
+        print(f"Report successfully saved to: {filepath}")
+
+    except ImportError:
+        print("Jinja2 is not installed. Please install it using: pip install Jinja2")
+    except Exception as e:
+        print(f"An error occurred while generating the HTML report: {e}")
+
+
 def save_to_html(report_data, selected_property_info, start_date, end_date):
     """Saves the report data to an HTML file in a property-specific subdirectory within 'output'."""
+    if 'table_data' in report_data and 'chart_data' in report_data:
+        _save_historical_report_to_html(report_data, selected_property_info, start_date, end_date)
+        return
+
     if not report_data or not report_data.get("rows"):
         print("No data to save.")
         return
@@ -161,12 +252,17 @@ def save_to_html(report_data, selected_property_info, start_date, end_date):
     # Generate table HTML
     table_html = _generate_table_html(headers, rows)
 
+    # Convert explanation from Markdown to HTML
+    explanation = report_data.get("explanation", "")
+    explanation_html = _markdown_to_html(explanation)
+
     # Replace placeholders
     date_range_str = report_data.get("date_range", f"{start_date} to {end_date}")
     html_content = html_content.replace("{{ report_title }}", report_title)
     html_content = html_content.replace("{{ property_display_name }}", selected_property_info['display_name'])
     html_content = html_content.replace("{{ date_range }}", date_range_str)
     html_content = html_content.replace("<!-- REPORT_TABLE_PLACEHOLDER -->", table_html)
+    html_content = html_content.replace("<!-- REPORT_EXPLANATION_PLACEHOLDER -->", explanation_html)
 
     try:
         with open(filepath, "w", encoding="utf-8") as htmlfile:
@@ -179,3 +275,61 @@ def save_to_csv_and_html(report_data, selected_property_info, start_date, end_da
     """Saves the report data to both CSV and HTML files."""
     save_to_csv(report_data, selected_property_info, start_date, end_date)
     save_to_html(report_data, selected_property_info, start_date, end_date)
+
+def save_report_to_file(report_data, filename):
+    """Saves a formatted report to a single text file in the 'output' directory."""
+    if not report_data or not report_data.get("rows"):
+        print(f"  -> No data to save for {filename}.")
+        return
+
+    # Ensure output directory exists
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    filepath = os.path.join(output_dir, filename)
+
+    headers = report_data.get("headers", [])
+    rows = report_data.get("rows", [])
+    title = report_data.get("title", "Report")
+    date_range_str = report_data.get("date_range", "")
+
+    # Format numbers for display
+    formatted_rows = []
+    for row in rows:
+        formatted_rows.append([_format_value(cell) for cell in row])
+
+    # Calculate column widths
+    col_widths = [len(h) for h in headers]
+    for row in formatted_rows:
+        for i, cell in enumerate(row):
+            if i < len(col_widths) and len(str(cell)) > col_widths[i]:
+                col_widths[i] = len(str(cell))
+
+    # Build the report string
+    report_string = []
+    report_string.append(f"--- {title} ---")
+    if date_range_str:
+        report_string.append(f"--- Date Range: {date_range_str} ---")
+    report_string.append("\n")
+
+    # Header line
+    header_line = " | ".join(headers[i].ljust(col_widths[i]) for i in range(len(headers)))
+    report_string.append(header_line)
+    report_string.append("-" * len(header_line))
+
+    # Row lines
+    for row in formatted_rows:
+        row_line = " | ".join(str(row[i]).ljust(col_widths[i]) for i in range(len(row)))
+        report_string.append(row_line)
+    
+    report_string.append("-" * len(header_line))
+
+    explanation = report_data.get("explanation")
+    if explanation:
+        report_string.append(f"\n{explanation}")
+
+    # Write to file
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("\n".join(report_string))
+    except Exception as e:
+        print(f"  -> Error saving text file: {e}")
