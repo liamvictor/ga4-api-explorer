@@ -53,7 +53,15 @@ def run_report(property_id, data_client, start_date, end_date):
     report_data = {
         "title": "Lead Quality by Channel Report",
         "headers": ["Channel", "Sessions", "Active Users", "Engagement Rate", "Leads", "Lead Conv. Rate"],
-        "rows": []
+        "rows": [],
+        "explanation": (
+            "**Metric Definitions:**\n"
+            "* **Sessions:** The number of sessions that began on your site or app.\n"
+            "* **Active Users:** The number of distinct users who visited your site or app and had an engaged session.\n"
+            "* **Engagement Rate:** The percentage of sessions that were engaged sessions.\n"
+            "* **Leads:** The total count of 'generate_lead' events triggered by users.\n"
+            "* **Lead Conv. Rate:** The number of 'generate_lead' events divided by the number of total Sessions."
+        )
     }
 
     if not traffic_response.rows:

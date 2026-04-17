@@ -13,18 +13,23 @@ def run_report(property_id, data_client, start_date, end_date):
         order_bys=[{"dimension": {"dimension_name": "sessionDefaultChannelGroup"}, "desc": False}], # Alphabetical order
     )
 
-    try:
-        response = data_client.run_report(request)
-    except Exception as e:
-        print(f"Error running Channel Overview Report: {e}")
-        return None
-
     # Standardized report data structure
     report_data = {
         "title": "Channel Overview Report",
         "headers": ["Channel", "New Users", "Engaged Sessions"],
-        "rows": []
+        "rows": [],
+        "explanation": (
+            "**Metric Definitions:**\n"
+            "* **New Users:** The number of users who interacted with your site or launched your app for the first time.\n"
+            "* **Engaged Sessions:** The number of sessions that lasted longer than 10 seconds, or had a conversion event, or had 2 or more screen or page views."
+        )
     }
+
+    try:
+        response = data_client.run_report(request)
+    except Exception as e:
+        print(f"Error running Channel Overview Report: {e}")
+        return report_data
 
     if not response.rows:
         return report_data # Return with empty rows
