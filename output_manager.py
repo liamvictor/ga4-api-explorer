@@ -245,6 +245,35 @@ def save_to_html(report_data, selected_property_info, start_date, end_date):
         except Exception as e:
             print(f"Error generating specialized HTML report: {e}. Falling back to standard format.")
 
+    # Specialized Top Channels Comparison Report
+    if report_data.get("special_type") == "top_channels_trend":
+        sanitized_property_name = _sanitize_name(selected_property_info['display_name'])
+        property_output_dir = os.path.join("output", sanitized_property_name)
+        os.makedirs(property_output_dir, exist_ok=True)
+        filename = f"top-channels-comparison-{start_date}-to-{end_date}.html"
+        filepath = os.path.join(property_output_dir, filename)
+        
+        try:
+            from jinja2 import Environment, FileSystemLoader
+            env = Environment(loader=FileSystemLoader('templates'))
+            template = env.get_template('top_channels_trend_template.html')
+            
+            html_content = template.render(
+                report_title=report_data.get("title"),
+                property_display_name=selected_property_info['display_name'],
+                property_id=selected_property_info['property_id'],
+                date_range=report_data.get("date_range", f"{start_date} to {end_date}"),
+                channels=report_data.get("channels"),
+                months=report_data.get("months"),
+                json_data=json.dumps(report_data.get("json_data"))
+            )
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            print(f"Successfully saved specialized top channels report to {filepath}")
+            return
+        except Exception as e:
+            print(f"Error generating specialized HTML report: {e}. Falling back to standard format.")
+
     if not report_data or not report_data.get("rows"):
         print("No data to save.")
         return
