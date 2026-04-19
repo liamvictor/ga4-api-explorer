@@ -8,10 +8,12 @@
    * New "Channel Overview Report": A new report to show channel data by new users and engaged sessions has been added to reports/channel_overview_report.py.
    * Improved Output Filenaming: Filenames for saved reports now reflect the actual date range (e.g., report-title-YYYY-MM-DD-to-YYYY-MM-DD).
    * Updated Documentation: README.md and SETUP_GUIDE.md have been updated to reflect these changes.
+   * Property List Caching: The list of available GA4 properties is now cached to speed up selection. A new --refresh-properties flag allows forcing a fresh load.
+   * New "Outbound Click Tracking Report": Added a report to track external links users click on, using the 'click' event from GA4 Enhanced Measurement.
+   * New "Cohort Retention Report": Implemented a week-over-week retention analysis using the GA4 Data API's specialized cohort report request.
 
   Next Task (Pending):
-   * Refine Date Range Logic (Add more non-interactive date flags): Implement command-line flags for predefined date ranges like --last-7-days, --last-28-days,
-     --last-calendar-month.
+   * Refine Date Range Logic (Add more non-interactive date flags): Implement command-line flags for predefined date ranges like --last-7-days, --last-28-days, --last-calendar-month.
    * Further work on "Channel Overview Report": We simplified this to a single-table output for general date ranges, but the complex "last year by complete calendar month"
      requirement (with two pivoted tables) is still outstanding if you decide to pursue it.
 
@@ -49,7 +51,27 @@ What would you like to do next?
 So that I can run the same report and date range on another property. I then select the property and it runs the same report type, the same date range, the same output.
 
 --
-
-Cache the "Available GA4 Properties:" after the first load unless requested a fresh load via a command line flag.
-
 --
+Digital Marketing Perspective - Missing Features:
+
+1.  **Monetization / E-commerce:**
+    *   Revenue Tracking: No reports for purchase revenue, total revenue, or average order value (AOV).
+    *   Item Performance: Reports for specific item sales, quantity, and item-level conversion rates.
+    *   Shopping Stages: Analysis of the "E-commerce Journey" (view_item -> add_to_cart -> begin_checkout -> purchase).
+
+2.  **Conversion Optimization (CRO):**
+    *   **Generic Conversions:** A report for ALL Key Events (formerly Conversions) by source/medium, not just specific events like 'generate_lead'.
+    *   **On-Site Search:** Analysis of search queries performed on the site to identify content gaps.
+    *   **Form Analytics:** Tracking form start vs. completion rates.
+
+3.  **Paid Media (Google Ads):**
+    *   Integration of Google Ads specific dimensions (Campaign Name, Ad Group, Keyword) to measure ROAS and CPA within the tool.
+
+4.  **Audience & Retention:**
+    *   **Cohort Analysis:** A proper retention table showing how users return week-over-week or month-over-month.
+    *   **Demographics:** Age and Gender distribution (requires Google Signals enabled).
+
+5.  **Experience & Engagement:**
+    *   **Outbound Click Tracking:** Identifying where users are going when they leave the site.
+    *   **File Downloads:** Tracking PDF/Asset engagement.
+    *   **Attribution Comparison:** Comparing performance across different attribution models (e.g., Last Click vs. Data-Driven).
