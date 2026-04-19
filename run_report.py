@@ -72,36 +72,64 @@ def get_property_info_by_id(property_id_str):
         print(f"Error: Could not find or access property ID '{property_id_str}'. {e}")
         return None
 
-def get_all_properties():
-    """Fetches and returns a list of all available GA4 properties, sorted alphabetically."""
+def get_all_properties(refresh=False):
+    """Fetches and returns a list of all available GA4 properties, sorted by account then property name."""
+    cache_filepath = os.path.join("cache", "properties_cache.json")
+
+    if not refresh and os.path.exists(cache_filepath):
+        # Using CACHE_DURATION from settings.py
+        if (time.time() - os.path.getmtime(cache_filepath)) < CACHE_DURATION:
+            try:
+                with open(cache_filepath, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading property cache: {e}. Re-fetching...")
+
     admin_client = ga4_client.get_admin_client()
     if not admin_client:
         return []
 
-    all_accounts = list(admin_client.list_accounts())
-    all_accounts.sort(key=lambda account: account.display_name)
+    print("Fetching available GA4 properties (API call)...")
+    try:
+        all_accounts = list(admin_client.list_accounts())
+        all_accounts.sort(key=lambda account: account.display_name)
 
-    if not all_accounts:
-        print("No GA4 accounts found that are accessible by this service account.")
+        if not all_accounts:
+            print("No GA4 accounts found that are accessible by this service account.")
+            return []
+
+        all_properties = []
+        for account in all_accounts:
+            request = ListPropertiesRequest(filter=f"ancestor:{account.name}")
+            account_properties = list(admin_client.list_properties(request=request))
+            
+            # Sort properties for this account: 'www' first, then alphabetically
+            def sort_key(prop):
+                is_www = prop.display_name.lower().startswith('www')
+                return (0, prop.display_name) if is_www else (1, prop.display_name)
+            account_properties.sort(key=sort_key)
+
+            for prop in account_properties:
+                all_properties.append({
+                    "account_display_name": account.display_name,
+                    "display_name": prop.display_name,
+                    "property_id": prop.name.split('/')[-1]
+                })
+
+        # Save to cache
+        os.makedirs("cache", exist_ok=True)
+        try:
+            with open(cache_filepath, 'w', encoding='utf-8') as f:
+                json.dump(all_properties, f)
+        except Exception as e:
+            print(f"Error saving property cache: {e}")
+
+        return all_properties
+    except Exception as e:
+        print(f"Error fetching properties from GA4 API: {e}")
         return []
 
-    all_properties = []
-    for account in all_accounts:
-        request = ListPropertiesRequest(filter=f"ancestor:{account.name}")
-        account_properties = list(admin_client.list_properties(request=request))
-        
-        for prop in account_properties:
-            all_properties.append({
-                "display_name": prop.display_name,
-                "property_id": prop.name.split('/')[-1]
-            })
-
-    # Sort all properties alphabetically by display name
-    all_properties.sort(key=lambda prop: prop['display_name'])
-    
-    return all_properties
-
-def get_selected_property(cli_property_id=None):
+def get_selected_property(cli_property_id=None, refresh=False):
     """Presents a sorted, interactive menu to the user to select a GA4 property."""
     if cli_property_id:
         selected_property = get_property_info_by_id(cli_property_id)
@@ -111,56 +139,30 @@ def get_selected_property(cli_property_id=None):
         else:
             print(f"Invalid or inaccessible property ID '{cli_property_id}' provided via command-line. Falling back to interactive selection...")
 
-    admin_client = ga4_client.get_admin_client()
-    if not admin_client:
-        return None
-
-    # Fetch and sort accounts alphabetically by display name
-    all_accounts = list(admin_client.list_accounts())
-    all_accounts.sort(key=lambda account: account.display_name)
-
-    if not all_accounts:
-        print("No GA4 accounts found that are accessible by this service account.")
-        return None
-
-    properties = {}
-    property_list_counter = 1
-    
-    print("\nAvailable GA4 Properties:")
-    for account in all_accounts:
-        print(f"\n--- Account: {account.display_name} ---")
-        
-        # Fetch all properties for the account
-        request = ListPropertiesRequest(filter=f"ancestor:{account.name}")
-        account_properties = list(admin_client.list_properties(request=request))
-
-        # Sort properties: 'www' first, then alphabetically
-        def sort_key(prop):
-            is_www = prop.display_name.lower().startswith('www')
-            return (0, prop.display_name) if is_www else (1, prop.display_name)
-        
-        account_properties.sort(key=sort_key)
-
-        if not account_properties:
-            print("  No properties found for this account.")
-            continue
-
-        for prop in account_properties:
-            properties[str(property_list_counter)] = {
-                "display_name": prop.display_name,
-                "property_id": prop.name.split('/')[-1]
-            }
-            print(f"{property_list_counter}. {prop.display_name} (ID: {prop.name.split('/')[-1]})")
-            property_list_counter += 1
-    
-    if not properties:
+    all_properties = get_all_properties(refresh=refresh)
+    if not all_properties:
         print("No GA4 properties found that are accessible by this service account.")
         return None
 
+    properties_map = {}
+    current_account = None
+    
+    print("\nAvailable GA4 Properties:")
+    for i, prop in enumerate(all_properties, 1):
+        if prop['account_display_name'] != current_account:
+            current_account = prop['account_display_name']
+            print(f"\n--- Account: {current_account} ---")
+        
+        properties_map[str(i)] = {
+            "display_name": prop['display_name'],
+            "property_id": prop['property_id']
+        }
+        print(f"{i}. {prop['display_name']} (ID: {prop['property_id']})")
+    
     while True:
         selection = input("\nEnter the number of the property you want to report on: ")
-        if selection in properties:
-            selected_property = properties[selection]
+        if selection in properties_map:
+            selected_property = properties_map[selection]
             print(f"You selected: {selected_property['display_name']} (ID: {selected_property['property_id']})")
             return selected_property
         else:
@@ -234,6 +236,7 @@ def get_selected_date_range(cli_start_date=None, cli_end_date=None, cli_all_mont
     print("4. Last Calendar Month (Default)")
     print("5. Custom Date Range")
     print("6. All Months (Generates a file for each month)")
+    print("7. Last 13 Months (Complete Calendar Months)")
 
 
     selection = input("Enter your choice (press Enter for default): ")
@@ -259,6 +262,18 @@ def get_selected_date_range(cli_start_date=None, cli_end_date=None, cli_all_mont
                 print("Invalid date format. Please use YYYY-MM-DD.")
     elif selection == "6":
         return "all-months", "all-months", "All Months", "All Months"
+    elif selection == "7":
+        first_day_of_current_month = today.replace(day=1)
+        last_day_of_last_month = first_day_of_current_month - timedelta(days=1)
+        # 13 months ago from the first day of the last month
+        # If last month is March 2026, first day is 2026-03-01.
+        # 12 months before 2026-03-01 is 2025-03-01.
+        # Wait, if we want 13 months including March 2026:
+        # March '26, Feb '26, ..., April '25 (12 months), March '25 (13 months).
+        # So it's relativedelta(months=12) from the first day of the last month.
+        first_day_of_last_month = last_day_of_last_month.replace(day=1)
+        start_date = first_day_of_last_month - relativedelta(months=12)
+        return start_date.strftime('%Y-%m-%d'), last_day_of_last_month.strftime('%Y-%m-%d'), "Last 13 Months", f"{start_date.strftime('%Y-%m-%d')} to {last_day_of_last_month.strftime('%Y-%m-%d')}"
     else: # Default to Last Calendar Month
         first_day_of_current_month = today.replace(day=1)
         last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
@@ -576,6 +591,7 @@ def main():
     parser.add_argument('--run-all-properties-report', action='store_true', help='Run Session Source/Medium report for all properties.')
     parser.add_argument('--run-all-reports', action='store_true', help='Run all reports for a single property.')
     parser.add_argument('--no-cache', action='store_true', help='Ignore cached results.')
+    parser.add_argument('--refresh-properties', action='store_true', help='Force a refresh of the available GA4 properties list.')
     args = parser.parse_args()
 
     google_auth = ga4_client.get_google_auth()
@@ -587,17 +603,25 @@ def main():
         run_report_for_all_properties(google_auth, no_cache=args.no_cache)
         return
 
+    # Handle single-property non-interactive flows
+    selected_property_info = None
+    if args.property_id:
+        selected_property_info = get_property_info_by_id(args.property_id)
+        if not selected_property_info:
+            return
+
     if args.run_all_reports:
-        if not args.property_id:
+        if not selected_property_info:
             print("Error: --run-all-reports requires a --property-id.")
             return
-        selected_property_info = get_property_info_by_id(args.property_id)
-        if not selected_property_info: return
         run_all_reports_for_property(selected_property_info, google_auth, args.start_date, args.end_date, args.all_months, args.output_format, args.no_cache)
         return
 
     while True:
-        selected_property_info = get_selected_property(args.property_id) if not 'selected_property_info' in locals() else locals()['selected_property_info']
+        if not selected_property_info:
+            selected_property_info = get_selected_property(refresh=args.refresh_properties)
+            args.refresh_properties = False # Only refresh once per session startup
+
         if not selected_property_info: break
 
         while True:
@@ -621,13 +645,17 @@ def main():
                     else:
                         print("Report generation failed.")
 
+            # If command-line args were used for both property and report, exit after one run
             if args.property_id and args.report: return
 
             print("\n(R)un another report, (C)hange property, (Q)uit")
             next_action = get_next_action()
-            if next_action == "C": break
+            if next_action == "C": 
+                selected_property_info = None
+                break
             if next_action == "Q": print("\nExiting..."); return
         
+        # If command-line property ID was used, exit the outer loop after finishing the report loop
         if args.property_id: return
 
 

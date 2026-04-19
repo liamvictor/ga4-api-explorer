@@ -72,6 +72,7 @@ You can bypass the interactive menus by providing arguments directly on the comm
 *   `-sd`, `--start-date <YYYY-MM-DD>`: Specify the start date for the report.
 *   `-ed`, `--end-date <YYYY-MM-DD>`: Specify the end date for the report.
 *   `-o`, `--output-format <FORMAT>`: Specify the output format. Choices: `console`, `csv`, `html`, `csv_html`.
+*   `--refresh-properties`: Force a refresh of the available GA4 properties list (bypasses cache).
 *   `--run-all-properties-report`: Generates a single, aggregated Session Source / Medium report (totalUsers, newUsers) for all available properties.
 *   `--run-all-reports`: Run all available reports for a single specified property. Requires `--property-id`.
 
