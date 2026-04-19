@@ -568,14 +568,14 @@ def get_next_action():
         while True:
             char = msvcrt.getch()
             if char == b'\x1b': return "Q"
-            if char.upper() in [b'R', b'C', b'Q']:
+            if char.upper() in [b'R', b'C', b'Q', b'P']:
                 print(char.decode().upper())
                 return char.decode().upper()
     else:
         while True:
             next_action = input().upper()
-            if next_action in ["R", "C", "Q"]: return next_action
-            else: print("Invalid choice. Please enter R, C, or Q.")
+            if next_action in ["R", "C", "Q", "P"]: return next_action
+            else: print("Invalid choice. Please enter R, C, P, or Q.")
 
 def main():
     """Main function to orchestrate the interactive reporting session."""
@@ -617,6 +617,12 @@ def main():
         run_all_reports_for_property(selected_property_info, google_auth, args.start_date, args.end_date, args.all_months, args.output_format, args.no_cache)
         return
 
+    # Variables to persist across property/report changes
+    selected_report = None
+    start_date = args.start_date
+    end_date = args.end_date
+    verbose_date_range_str = None
+
     while True:
         if not selected_property_info:
             selected_property_info = get_selected_property(refresh=args.refresh_properties)
@@ -626,19 +632,30 @@ def main():
 
         while True:
             available_reports = get_available_reports()
-            selected_report = get_selected_report(available_reports, args.report)
+            
+            # Only ask for report if it's not already selected (e.g., from 'P' action)
+            if not selected_report:
+                selected_report = get_selected_report(available_reports, args.report)
+            
             if not selected_report: break
 
             if selected_report['module'] == 'all':
                 run_all_reports_for_property(selected_property_info, google_auth, args.start_date, args.end_date, args.all_months, args.output_format, args.no_cache)
                 if args.property_id: return
             else:
-                start_date, end_date, _, verbose_date_range_str = get_selected_date_range(args.start_date, args.end_date, args.all_months)
+                # Only ask for date range if it's not already determined (e.g., from 'P' or 'R' action)
+                if not start_date:
+                    start_date, end_date, _, verbose_date_range_str = get_selected_date_range(args.start_date, args.end_date, args.all_months)
+                
                 if start_date == "all-months":
                     run_monthly_reports_for_property(selected_property_info, selected_report, google_auth, args.output_format, args.no_cache)
                 else:
                     report_data = run_dynamic_report(selected_report['module'], selected_property_info['property_id'], start_date, end_date, google_auth, no_cache=args.no_cache)
                     if report_data:
+                        # Re-derive verbose string if we only have raw dates but no verbose str yet
+                        if not verbose_date_range_str:
+                             verbose_date_range_str = f"{start_date} to {end_date}"
+                        
                         report_data['date_range'] = verbose_date_range_str
                         output_function, _ = get_selected_output_format(args.output_format, selected_report['module'])
                         output_function(report_data, selected_property_info, start_date, end_date)
@@ -648,12 +665,38 @@ def main():
             # If command-line args were used for both property and report, exit after one run
             if args.property_id and args.report: return
 
-            print("\n(R)un another report, (C)hange property, (Q)uit")
+            print("\n(R)un another report for this property")
+            print("(P)run same report for another property")
+            print("(C)hange property")
+            print("(Q)uit")
+            
             next_action = get_next_action()
+            
+            if next_action == "R":
+                selected_report = None # Reset report but keep property and date range? 
+                # User preference: "(R)un another report for this property" usually implies changing the report type.
+                # If they wanted to change date, they'd have to re-select report too in current flow.
+                start_date = args.start_date # Reset to CLI args (usually None)
+                end_date = args.end_date
+                verbose_date_range_str = None
+                continue
+            
+            if next_action == "P":
+                # Keep selected_report, start_date, end_date, verbose_date_range_str
+                selected_property_info = None # Trigger property selection
+                break
+                
             if next_action == "C": 
                 selected_property_info = None
+                selected_report = None
+                start_date = args.start_date
+                end_date = args.end_date
+                verbose_date_range_str = None
                 break
-            if next_action == "Q": print("\nExiting..."); return
+                
+            if next_action == "Q": 
+                print("\nExiting...")
+                return
         
         # If command-line property ID was used, exit the outer loop after finishing the report loop
         if args.property_id: return
