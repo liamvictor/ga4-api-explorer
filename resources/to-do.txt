@@ -11,6 +11,7 @@
    * Property List Caching: The list of available GA4 properties is now cached to speed up selection. A new --refresh-properties flag allows forcing a fresh load.
    * New "Outbound Click Tracking Report": Added a report to track external links users click on, using the 'click' event from GA4 Enhanced Measurement.
    * New "Cohort Retention Report": Implemented a week-over-week retention analysis using the GA4 Data API's specialized cohort report request.
+   * New "File Downloads Report": Added a report to track PDF and other asset engagement via the 'file_download' event.
 
   Next Task (Pending):
    * Refine Date Range Logic (Add more non-interactive date flags): Implement command-line flags for predefined date ranges like --last-7-days, --last-28-days, --last-calendar-month.
