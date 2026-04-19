@@ -12,6 +12,8 @@
    * New "Outbound Click Tracking Report": Added a report to track external links users click on, using the 'click' event from GA4 Enhanced Measurement.
    * New "Cohort Retention Report": Implemented a week-over-week retention analysis using the GA4 Data API's specialized cohort report request.
    * New "File Downloads Report": Added a report to track PDF and other asset engagement via the 'file_download' event.
+   * New "Device Type Traffic Share Report": Added a report showing traffic % and bounce rate by device category (Desktop, Mobile, Tablet).
+   * Interactive Menu Enhancement: Added a new '(P) Run same report on another property' option to quickly compare different properties using the same settings.
 
   Next Task (Pending):
    * Refine Date Range Logic (Add more non-interactive date flags): Implement command-line flags for predefined date ranges like --last-7-days, --last-28-days, --last-calendar-month.
@@ -32,13 +34,6 @@ For each property
 Default as the last calander month
 
 --
-
-For each property get Tech details desktop, mobile, tablet, etc.
-
-Calculate the %ge of traffic for each
-
-Show the bounce rate by tech type
-
 --
 
 Change this:
