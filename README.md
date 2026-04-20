@@ -72,6 +72,7 @@ You can bypass the interactive menus by providing arguments directly on the comm
 *   `-sd`, `--start-date <YYYY-MM-DD>`: Specify the start date for the report.
 *   `-ed`, `--end-date <YYYY-MM-DD>`: Specify the end date for the report.
 *   `-o`, `--output-format <FORMAT>`: Specify the output format. Choices: `console`, `csv`, `html`, `csv_html`.
+*   `--refresh-properties`: Force a refresh of the available GA4 properties list (bypasses cache).
 *   `--run-all-properties-report`: Generates a single, aggregated Session Source / Medium report (totalUsers, newUsers) for all available properties.
 *   `--run-all-reports`: Run all available reports for a single specified property. Requires `--property-id`.
 
@@ -104,12 +105,22 @@ You can bypass the interactive menus by providing arguments directly on the comm
 
 Here is a list of the reports currently available and what they provide:
 
+*   **AI Traffic Acquisition Report:** Isolates and details traffic from known AI discovery tools and chatbots (e.g., ChatGPT, Gemini, Perplexity), helping you measure your visibility in generative search.
+*   **Channel Performance Trends:** An interactive HTML report that uses the `yearMonth` dimension to track traffic and leads for each channel over time, featuring a built-in line chart.
+*   **Device Share & Engagement Report:** Calculates the percentage share of total traffic for each device category (Desktop, Mobile, Tablet) and includes bounce rates to identify platform-specific issues.
+*   **Top 5 Channels Comparison:** An interactive HTML report that ranks all channels by a selectable metric (Sessions, Leads, etc.) and trends the top 5 performers over time in a multi-line chart.
 *   **Channel Overview Report:** Shows new users and engaged sessions broken down by your GA4 default channel groupings.
+*   **Landing Pages Report:** Lists the top 25 landing pages by sessions, including active users, new users, and engagement rate.
+*   **Lead Quality by Channel Report:** Focuses on lead generation by combining total traffic (sessions, active users) with specific 'generate_lead' event counts and calculating a lead conversion rate for each channel.
+*   **Monthly Acquisition Trend Report:** Provides a month-by-month view of total users, new users, sessions, conversions, and engagement rate, ideal for long-term trend analysis.
+*   **New vs. Returning by Channel Report:** Breaks down the 'New vs. Returning' metrics by acquisition channel, showing which channels are better at bringing back users.
+*   **New vs. Returning Engagement Report:** Compares engagement metrics (active users, sessions, duration) between new and returning visitors to see if you are successfully building an audience.
+*   **Screen Size Engagement Report:** Analyzes how different screen resolutions impact user engagement and bounce rate, highlighting potential responsive design issues.
 *   **Session Source / Medium Report:** Details total users and new users based on the session's source and medium (e.g., "google / organic", "facebook / cpc").
 *   **Top 5 Cities by Active Users:** Ranks the top 5 cities based on active users, providing geographical insights into your audience.
 *   **Top 25 Pages by Views:** Lists the top 25 most viewed pages on your site, indicating popular content.
 *   **Traffic Acquisition Report:** A detailed report showing session default channel group, session source/medium, total users, new users, engaged sessions, engagement rate, and conversions, providing a comprehensive view of traffic quality.
-*   **User Technology Report:** Provides insights into your audience's technology, including device category, operating system, browser, total users, engaged sessions, and engagement rate, useful for optimising compatibility and user experience.
+*   **User Technology Report:** Provides insights into your audience's technology, including device category, operating system, browser, total users, engaged sessions, engagement rate, and bounce rate, useful for optimising compatibility and user experience.
 
 ## How to Add a New Report
 

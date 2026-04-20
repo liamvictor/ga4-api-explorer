@@ -3,6 +3,7 @@ import os
 import time
 import re
 import datetime
+import json
 
 def _sanitize_name(name):
     """Converts a string to a sanitized, hyphenated, lowercase format for filenames/directories."""
@@ -159,8 +160,120 @@ def save_to_csv(report_data, selected_property_info, start_date, end_date):
         print(f"Error saving CSV file: {e}")
 
 
+def _save_historical_report_to_html(report_data, property_info, start_date, end_date):
+    """Saves a historical report to an HTML file."""
+    if not property_info or 'display_name' not in property_info or 'property_id' not in property_info:
+        print("Error: Property information is incomplete. Cannot save HTML report.")
+        return
+
+    property_name = property_info['display_name']
+    property_id = property_info['property_id']
+    title = report_data.get('title', 'GA4 Report')
+    
+    # Sanitize property_name for filename
+    sanitized_property_name = "".join(c for c in property_name if c.isalnum() or c in (' ', '_')).rstrip()
+    
+    filename = f"{title.replace(' ', '_')}_{sanitized_property_name}_{start_date}_to_{end_date}.html"
+    
+    # Ensure the 'output' directory exists
+    output_dir = 'output'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    filepath = os.path.join(output_dir, filename)
+
+    try:
+        from jinja2 import Environment, FileSystemLoader
+        env = Environment(loader=FileSystemLoader('templates'))
+        template = env.get_template('historical_report_template.html')
+        
+        html_content = template.render(
+            title=title,
+            property_name=property_name,
+            property_id=property_id,
+            date_range=report_data.get('date_range', f'{start_date} to {end_date}'),
+            table_data=report_data.get('table_data', {}),
+            chart_data=report_data.get('chart_data', {}),
+            months=report_data.get('months', []),
+            incomplete_months=report_data.get('incomplete_months', {}),
+            explanation=report_data.get('explanation', '')
+        )
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+            
+        print(f"Report successfully saved to: {filepath}")
+
+    except ImportError:
+        print("Jinja2 is not installed. Please install it using: pip install Jinja2")
+    except Exception as e:
+        print(f"An error occurred while generating the HTML report: {e}")
+
+
 def save_to_html(report_data, selected_property_info, start_date, end_date):
     """Saves the report data to an HTML file in a property-specific subdirectory within 'output'."""
+    if 'table_data' in report_data and 'chart_data' in report_data:
+        _save_historical_report_to_html(report_data, selected_property_info, start_date, end_date)
+        return
+
+    # Specialized Trend Report with Charting
+    if report_data.get("special_type") == "channel_trend":
+        sanitized_property_name = _sanitize_name(selected_property_info['display_name'])
+        property_output_dir = os.path.join("output", sanitized_property_name)
+        os.makedirs(property_output_dir, exist_ok=True)
+        filename = f"channel-performance-trends-{start_date}-to-{end_date}.html"
+        filepath = os.path.join(property_output_dir, filename)
+        
+        try:
+            from jinja2 import Environment, FileSystemLoader
+            env = Environment(loader=FileSystemLoader('templates'))
+            template = env.get_template('channel_trend_template.html')
+            
+            html_content = template.render(
+                report_title=report_data.get("title"),
+                property_display_name=selected_property_info['display_name'],
+                property_id=selected_property_info['property_id'],
+                date_range=report_data.get("date_range", f"{start_date} to {end_date}"),
+                channels=report_data.get("channels"),
+                months=report_data.get("months"),
+                json_data=json.dumps(report_data.get("json_data"))
+            )
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            print(f"Successfully saved specialized trend report to {filepath}")
+            return
+        except Exception as e:
+            print(f"Error generating specialized HTML report: {e}. Falling back to standard format.")
+
+    # Specialized Top Channels Comparison Report
+    if report_data.get("special_type") == "top_channels_trend":
+        sanitized_property_name = _sanitize_name(selected_property_info['display_name'])
+        property_output_dir = os.path.join("output", sanitized_property_name)
+        os.makedirs(property_output_dir, exist_ok=True)
+        filename = f"top-channels-comparison-{start_date}-to-{end_date}.html"
+        filepath = os.path.join(property_output_dir, filename)
+        
+        try:
+            from jinja2 import Environment, FileSystemLoader
+            env = Environment(loader=FileSystemLoader('templates'))
+            template = env.get_template('top_channels_trend_template.html')
+            
+            html_content = template.render(
+                report_title=report_data.get("title"),
+                property_display_name=selected_property_info['display_name'],
+                property_id=selected_property_info['property_id'],
+                date_range=report_data.get("date_range", f"{start_date} to {end_date}"),
+                channels=report_data.get("channels"),
+                months=report_data.get("months"),
+                json_data=json.dumps(report_data.get("json_data"))
+            )
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            print(f"Successfully saved specialized top channels report to {filepath}")
+            return
+        except Exception as e:
+            print(f"Error generating specialized HTML report: {e}. Falling back to standard format.")
+
     if not report_data or not report_data.get("rows"):
         print("No data to save.")
         return

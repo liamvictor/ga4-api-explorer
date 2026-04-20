@@ -3,6 +3,12 @@ from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.oauth2 import service_account
 import os
 
+def get_google_auth():
+    """
+    Loads credentials and returns a google.auth.credentials.Credentials object.
+    """
+    return _load_credentials()
+
 def get_admin_client():
     """Returns an authenticated Google Analytics Admin API client."""
     credentials = _load_credentials()
@@ -31,9 +37,14 @@ def _load_credentials():
         return None
 
     try:
-        credentials = service_account.Credentials.from_service_account_file(credentials_path)
+        # Define the required scopes
+        scopes = [
+            'https://www.googleapis.com/auth/analytics.readonly',
+        ]
+        
+        credentials = service_account.Credentials.from_service_account_file(
+            credentials_path, scopes=scopes)
         return credentials
     except Exception as e:
         print(f"Error loading credentials: {e}")
         return None
-
