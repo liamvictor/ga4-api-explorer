@@ -4,21 +4,48 @@ from google.analytics.data_v1beta.types import RunReportRequest, Dimension, Metr
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
 def strip_tracking_params(url):
-    """Strips common tracking parameters (mkt_tok, aliId) from a URL/path string."""
+    """
+    Advanced stripping of tracking parameters.
+    Removes standard click IDs, Marketo/HubSpot tags, and internal tracking blobs.
+    """
     if not url:
         return url
     
-    # Quick check to avoid overhead if no tracking params are likely present
-    tracking_params = {'mkt_tok', 'aliId'}
-    if not any(param in url for param in tracking_params):
+    # Exact match parameters to strip (case-insensitive)
+    exact_params = {
+        'msclkid', 'gclid', 'fbclid', 'gbraid', 'wbraid', 'gad_source', 'gad_campaignid', # Ad Platforms
+        'mkt_tok', 'aliid',                                                               # Marketo
+        '_hsenc', '_hsmi', '__hssc', '__hstc', 'hsctatracking',                           # HubSpot
+        'visit_number'                                                                    # Internal tracking
+    }
+    
+    try:
+        parsed = urlparse(url)
+        qsl = parse_qsl(parsed.query)
+        
+        filtered = []
+        for k, v in qsl:
+            k_low = k.lower()
+            
+            # Skip if it's an exact match
+            if k_low in exact_params:
+                continue
+            
+            # Skip if it starts with utm_
+            if k_low.startswith('utm_'):
+                continue
+                
+            # Skip internal state patterns
+            if '_running_' in k_low or k_low.endswith('_running'):
+                continue
+                
+            filtered.append((k, v))
+        
+        new_query = urlencode(filtered)
+        cleaned_url = urlunparse(parsed._replace(query=new_query))
+        return cleaned_url
+    except Exception:
         return url
-    
-    parsed = urlparse(url)
-    qsl = parse_qsl(parsed.query)
-    filtered = [(k, v) for k, v in qsl if k not in tracking_params]
-    
-    new_query = urlencode(filtered)
-    return urlunparse(parsed._replace(query=new_query))
 
 def run_report(property_id, data_client, start_date, end_date):
     """Runs a full campaign content and landing page report with tracking param stripping."""
@@ -44,12 +71,14 @@ def run_report(property_id, data_client, start_date, end_date):
     ]
 
     # Create the report request
+    # Added limit to prevent timeout on high-cardinality datasets
     request = RunReportRequest(
         property=f"properties/{property_id}",
         dimensions=dimensions,
         metrics=metrics,
         order_bys=order_bys,
         date_ranges=[{"start_date": start_date, "end_date": end_date}],
+        limit=10000 
     )
 
     # Execute the report request
@@ -100,21 +129,27 @@ def run_report(property_id, data_client, start_date, end_date):
             key[2], # Landing Page (Cleaned)
             str(sessions),
             str(engaged),
-            f"{eng_rate:.4f}",
-            f"{bounce_rate:.4f}",
+            f"{eng_rate * 100:.2f}%",
+            f"{bounce_rate * 100:.2f}%",
             f"{conversions:g}"
         ])
 
     # Sort final rows by sessions descending
     final_rows.sort(key=lambda x: int(x[3]), reverse=True)
 
-    headers = [header.name for header in response.dimension_headers] + [header.name for header in response.metric_headers]
+    headers = ["Campaign", "Content", "Landing Page", "Sessions", "Engaged Sessions", "Engagement Rate", "Bounce Rate", "Conversions"]
     
     report_data = {
         "title": "UTM Full Content & Landing Page Report",
         "headers": headers,
         "rows": final_rows,
-        "explanation": "**Note:** Tracking parameters (`mkt_tok` and `aliId`) have been stripped from the Landing Page URLs, and the data has been re-aggregated to provide a cleaner view of unique campaign paths."
+        "explanation": (
+            "**Note:** This report performs aggressive data cleaning to prevent row fragmentation. \n"
+            "* **Stripped:** Click IDs (gclid, msclkid, fbclid), Marketo/HubSpot tags, and internal tracking blobs. \n"
+            "* **UTM Parameters:** All `utm_*` parameters are stripped from the URL path as they are already captured in the Campaign/Content dimensions. \n"
+            "* **Aggregation:** Data is re-aggregated after cleaning to provide a consolidated view. \n"
+            "* **Limit:** Initial data fetch is limited to the top 10,000 rows to ensure report stability."
+        )
     }
 
     return report_data
