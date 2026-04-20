@@ -88,11 +88,13 @@ def run_report(property_id, data_client, start_date, end_date):
         "headers": headers,
         "rows": final_rows,
         "explanation": (
-            "This report shows user retention week-over-week. \n"
-            "* **Cohort:** The week when users first visited the site (starting Monday).\n"
-            "* **Week 0:** Total users acquired in that week.\n"
-            "* **Week 1-5:** The percentage of those same users who returned in subsequent weeks.\n"
-            "This is a manual calculation based on 'First Session Date' to ensure compatibility across SDK versions."
+            "### How to Read This Report\n"
+            "This report measures **user loyalty** by tracking how many users return to your site in the weeks following their very first visit.\n\n"
+            "*   **Cohort (Week Starting):** Groups users based on the week they had their *first session* on your site. Each row represents a different group of new users.\n"
+            "*   **Week 0 (Size):** The total number of unique users who were new to your site during that specific week.\n"
+            "*   **Week 1 to Week 5:** The percentage (and raw count) of users from the original Week 0 cohort who came back to the site during subsequent 7-day periods.\n\n"
+            "**Why it matters:** \n"
+            "High retention percentages in later weeks indicate that your content or service is successfully building a habitual audience. A sharp drop-off after Week 0 might suggest that while your acquisition is working, your site isn't providing enough long-term value to keep users coming back."
         )
     }
 

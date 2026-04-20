@@ -109,7 +109,6 @@ Here is a list of the reports currently available and what they provide:
 *   **Channel Performance Trends:** An interactive HTML report that uses the `yearMonth` dimension to track traffic and leads for each channel over time, featuring a built-in line chart.
 *   **Channel Overview Report:** Shows sessions, engaged sessions, engagement rate, active users, and leads, broken down by GA4 default channel groupings.
 *   **Cohort Retention Report:** Measures how well you retain users over time, showing the percentage of users who return to your site in the weeks following their first visit.
-*   **Device Share & Engagement Report:** Calculates the percentage share of total traffic for each device category (Desktop, Mobile, Tablet) and includes bounce rates to identify platform-specific issues.
 *   **Device Type Historical Report:** A multi-month trend report for device categories, allowing you to see how your audience's technology mix is evolving over time.
 *   **Device Type Report:** Provides a snapshot of performance (users, engagement, bounce rate) across different device categories.
 *   **File Downloads Report:** Tracks downloads of various file types (PDF, DOCX, ZIP, etc.) to understand which resources are most popular with your users.
