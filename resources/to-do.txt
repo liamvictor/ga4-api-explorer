@@ -1,55 +1,37 @@
-  Completed Since Last Checkpoint:
-   * Full Command-Line Flag Support: run_report.py now accepts flags for property, report, date range (-sd, -ed), and output format (-o), allowing for non-interactive
-     execution.
+Completed Since Last Checkpoint:
+   * Full Command-Line Flag Support: run_report.py now accepts flags for property, report, date range (-sd, -ed), and output format (-o), allowing for non-interactive execution.
    * Cache Cleanup: Implemented an automatic cleanup for stale cache files.
-   * Configurable Settings: CACHE_DURATION has been moved to a new settings.py file for easier management.
-   * Alphabetical Output Format Sorting: The output format menu is now sorted alphabetically.
-   * New "Top Pages Report": A new report to show top 25 pages by views has been added to reports/top_pages_report.py.
-   * New "Channel Overview Report": A new report to show channel data by new users and engaged sessions has been added to reports/channel_overview_report.py.
-   * Improved Output Filenaming: Filenames for saved reports now reflect the actual date range (e.g., report-title-YYYY-MM-DD-to-YYYY-MM-DD).
-   * Updated Documentation: README.md and SETUP_GUIDE.md have been updated to reflect these changes.
+   * Configurable Settings: CACHE_DURATION moved to settings.py.
+   * New Reports: Added AI Traffic Acquisition, Top Pages, Channel Overview, Outbound Click Tracking, Cohort Retention, File Downloads, and Device Type (Historical & Snapshot).
+   * Improved Filenaming: Output filenames now reflect the actual date range and property.
+   * Documentation Sync: README.md and SETUP_GUIDE.md are fully updated with 24 active reports and setup instructions.
+   * Property List Caching: Accelerated property selection with persistence.
+   * Interactive "P" Action: Added "(P) Run same report on another property" to preserve report/date settings during comparison.
+   * Multi-Month Trend Engine: Implemented 'Last 13 Months' and 'All Months' logic using the yearMonth dimension for longitudinal studies.
+   * Aggressive UTM URL Cleaning: Implemented stripping of fragmenting parameters (msclkid, gclid, Marketo/HubSpot IDs) and re-aggregation of data in UTM reports.
+   * Cohort Documentation: Added built-in "How to Read" guide to the Cohort Retention HTML report.
 
-  Next Task (Pending):
-   * Refine Date Range Logic (Add more non-interactive date flags): Implement command-line flags for predefined date ranges like --last-7-days, --last-28-days,
-     --last-calendar-month.
-   * Further work on "Channel Overview Report": We simplified this to a single-table output for general date ranges, but the complex "last year by complete calendar month"
-     requirement (with two pivoted tables) is still outstanding if you decide to pursue it.
+Next Tasks & Improvements:
 
-  I am ready to resume tomorrow from this point. Please let me know what you'd like to tackle first then.
+   1. **Non-Interactive Date Presets:**
+      * Add CLI flags like `--last-7-days`, `--last-30-days`, `--last-month`, and `--last-13-months` to avoid manual date entry in scripts.
 
--- 
-make a way of getting a years worth of data
-Should be complete calander months, so Dec 24, Jan 25, Feb 25 etc
+   2. **"All Key Events" Performance Report:**
+      * Create a report that tracks ALL events marked as "Key Events" (conversions) in GA4, not just 'generate_lead', broken down by source/medium.
 
---
-I want a new report that get's the following                                                                                     │
-Traffic Acquisition:	User	
-User Acquisition: New Users
-For each property
-Default as the last calander month
+   3. **On-Site Search Analysis:**
+      * Create a report for 'view_search_results' to identify what users are looking for and where content gaps exist.
 
---
+   4. **Paid Media Deep-Dive (Google Ads):**
+      * Add a report utilizing `googleAdsKeyword`, `googleAdsAdNetworkType`, and `googleAdsCampaignName` to measure search-level performance.
 
-For each property get Tech details desktop, mobile, tablet, etc.
+   5. **Bulk Report Generation:**
+      * Enhance the `--run-all-reports` feature to support date ranges like "Last 13 Months" for every report in one command.
 
-Calculate the %ge of traffic for each
+   6. **Data API Quota Management:**
+      * Add a check or display for "Property Quota" remaining, as aggressive reports can hit GA4 API limits.
 
-Show the bounce rate by tech type
+   7. **Refactor output_manager.py:**
+      * Consolidate HTML generation logic; currently, specialized reports (Trends, Top Channels) use custom saving blocks in run_report.py.
 
---
-
-Change this:
-
-What would you like to do next?
-(R)un another report for this property
-(C)hange property
-(Q)uit
-
-
-So that I can run the same report and date range on another property. I then select the property and it runs the same report type, the same date range, the same output.
-
---
-
-Cache the "Available GA4 Properties:" after the first load unless requested a fresh load via a command line flag.
-
---
+Current Status: The core engine is now robust, handling high-cardinality data and longitudinal trends. The project is ready for a Pull Request to the upstream repository.

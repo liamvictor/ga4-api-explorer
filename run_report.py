@@ -11,6 +11,7 @@ import json # New import for caching
 import hashlib # New import for caching
 import time
 import argparse # New import for command-line arguments
+import inspect # New import for inspecting function signature
 if sys.platform == "win32":
     import msvcrt
 
@@ -71,36 +72,64 @@ def get_property_info_by_id(property_id_str):
         print(f"Error: Could not find or access property ID '{property_id_str}'. {e}")
         return None
 
-def get_all_properties():
-    """Fetches and returns a list of all available GA4 properties, sorted alphabetically."""
+def get_all_properties(refresh=False):
+    """Fetches and returns a list of all available GA4 properties, sorted by account then property name."""
+    cache_filepath = os.path.join("cache", "properties_cache.json")
+
+    if not refresh and os.path.exists(cache_filepath):
+        # Using CACHE_DURATION from settings.py
+        if (time.time() - os.path.getmtime(cache_filepath)) < CACHE_DURATION:
+            try:
+                with open(cache_filepath, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading property cache: {e}. Re-fetching...")
+
     admin_client = ga4_client.get_admin_client()
     if not admin_client:
         return []
 
-    all_accounts = list(admin_client.list_accounts())
-    all_accounts.sort(key=lambda account: account.display_name)
+    print("Fetching available GA4 properties (API call)...")
+    try:
+        all_accounts = list(admin_client.list_accounts())
+        all_accounts.sort(key=lambda account: account.display_name)
 
-    if not all_accounts:
-        print("No GA4 accounts found that are accessible by this service account.")
+        if not all_accounts:
+            print("No GA4 accounts found that are accessible by this service account.")
+            return []
+
+        all_properties = []
+        for account in all_accounts:
+            request = ListPropertiesRequest(filter=f"ancestor:{account.name}")
+            account_properties = list(admin_client.list_properties(request=request))
+            
+            # Sort properties for this account: 'www' first, then alphabetically
+            def sort_key(prop):
+                is_www = prop.display_name.lower().startswith('www')
+                return (0, prop.display_name) if is_www else (1, prop.display_name)
+            account_properties.sort(key=sort_key)
+
+            for prop in account_properties:
+                all_properties.append({
+                    "account_display_name": account.display_name,
+                    "display_name": prop.display_name,
+                    "property_id": prop.name.split('/')[-1]
+                })
+
+        # Save to cache
+        os.makedirs("cache", exist_ok=True)
+        try:
+            with open(cache_filepath, 'w', encoding='utf-8') as f:
+                json.dump(all_properties, f)
+        except Exception as e:
+            print(f"Error saving property cache: {e}")
+
+        return all_properties
+    except Exception as e:
+        print(f"Error fetching properties from GA4 API: {e}")
         return []
 
-    all_properties = []
-    for account in all_accounts:
-        request = ListPropertiesRequest(filter=f"ancestor:{account.name}")
-        account_properties = list(admin_client.list_properties(request=request))
-        
-        for prop in account_properties:
-            all_properties.append({
-                "display_name": prop.display_name,
-                "property_id": prop.name.split('/')[-1]
-            })
-
-    # Sort all properties alphabetically by display name
-    all_properties.sort(key=lambda prop: prop['display_name'])
-    
-    return all_properties
-
-def get_selected_property(cli_property_id=None):
+def get_selected_property(cli_property_id=None, refresh=False):
     """Presents a sorted, interactive menu to the user to select a GA4 property."""
     if cli_property_id:
         selected_property = get_property_info_by_id(cli_property_id)
@@ -110,56 +139,30 @@ def get_selected_property(cli_property_id=None):
         else:
             print(f"Invalid or inaccessible property ID '{cli_property_id}' provided via command-line. Falling back to interactive selection...")
 
-    admin_client = ga4_client.get_admin_client()
-    if not admin_client:
-        return None
-
-    # Fetch and sort accounts alphabetically by display name
-    all_accounts = list(admin_client.list_accounts())
-    all_accounts.sort(key=lambda account: account.display_name)
-
-    if not all_accounts:
-        print("No GA4 accounts found that are accessible by this service account.")
-        return None
-
-    properties = {}
-    property_list_counter = 1
-    
-    print("\nAvailable GA4 Properties:")
-    for account in all_accounts:
-        print(f"\n--- Account: {account.display_name} ---")
-        
-        # Fetch all properties for the account
-        request = ListPropertiesRequest(filter=f"ancestor:{account.name}")
-        account_properties = list(admin_client.list_properties(request=request))
-
-        # Sort properties: 'www' first, then alphabetically
-        def sort_key(prop):
-            is_www = prop.display_name.lower().startswith('www')
-            return (0, prop.display_name) if is_www else (1, prop.display_name)
-        
-        account_properties.sort(key=sort_key)
-
-        if not account_properties:
-            print("  No properties found for this account.")
-            continue
-
-        for prop in account_properties:
-            properties[str(property_list_counter)] = {
-                "display_name": prop.display_name,
-                "property_id": prop.name.split('/')[-1]
-            }
-            print(f"{property_list_counter}. {prop.display_name} (ID: {prop.name.split('/')[-1]})")
-            property_list_counter += 1
-    
-    if not properties:
+    all_properties = get_all_properties(refresh=refresh)
+    if not all_properties:
         print("No GA4 properties found that are accessible by this service account.")
         return None
 
+    properties_map = {}
+    current_account = None
+    
+    print("\nAvailable GA4 Properties:")
+    for i, prop in enumerate(all_properties, 1):
+        if prop['account_display_name'] != current_account:
+            current_account = prop['account_display_name']
+            print(f"\n--- Account: {current_account} ---")
+        
+        properties_map[str(i)] = {
+            "display_name": prop['display_name'],
+            "property_id": prop['property_id']
+        }
+        print(f"{i}. {prop['display_name']} (ID: {prop['property_id']})")
+    
     while True:
         selection = input("\nEnter the number of the property you want to report on: ")
-        if selection in properties:
-            selected_property = properties[selection]
+        if selection in properties_map:
+            selected_property = properties_map[selection]
             print(f"You selected: {selected_property['display_name']} (ID: {selected_property['property_id']})")
             return selected_property
         else:
@@ -233,6 +236,7 @@ def get_selected_date_range(cli_start_date=None, cli_end_date=None, cli_all_mont
     print("4. Last Calendar Month (Default)")
     print("5. Custom Date Range")
     print("6. All Months (Generates a file for each month)")
+    print("7. Last 13 Months (Complete Calendar Months)")
 
 
     selection = input("Enter your choice (press Enter for default): ")
@@ -258,6 +262,12 @@ def get_selected_date_range(cli_start_date=None, cli_end_date=None, cli_all_mont
                 print("Invalid date format. Please use YYYY-MM-DD.")
     elif selection == "6":
         return "all-months", "all-months", "All Months", "All Months"
+    elif selection == "7":
+        first_day_of_current_month = today.replace(day=1)
+        last_day_of_last_month = first_day_of_current_month - timedelta(days=1)
+        first_day_of_last_month = last_day_of_last_month.replace(day=1)
+        start_date = first_day_of_last_month - relativedelta(months=12)
+        return start_date.strftime('%Y-%m-%d'), last_day_of_last_month.strftime('%Y-%m-%d'), "Last 13 Months", f"{start_date.strftime('%Y-%m-%d')} to {last_day_of_last_month.strftime('%Y-%m-%d')}"
     else: # Default to Last Calendar Month
         first_day_of_current_month = today.replace(day=1)
         last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
@@ -275,8 +285,14 @@ def _get_output_function_from_args(output_format_str):
     }
     return output_formats_map.get(output_format_str.lower())
 
-def get_selected_output_format(cli_output_format=None):
+def get_selected_output_format(cli_output_format=None, report_module=None):
     """Presents an interactive menu to select the output format."""
+    is_historical_report = report_module and 'historical' in report_module
+
+    if is_historical_report:
+        print("\nHistorical reports can only be saved as HTML.")
+        return output_manager.save_to_html, "html"
+
     if cli_output_format:
         output_func = _get_output_function_from_args(cli_output_format)
         if output_func:
@@ -309,8 +325,6 @@ def get_selected_output_format(cli_output_format=None):
         else:
             print("Invalid selection. Please enter a valid number.")
 
-from google.analytics.data_v1beta.types import RunReportRequest
-
 def get_earliest_data_date(property_id, data_client):
     """Finds the earliest date with data for a given property by querying the API."""
     start_date = datetime(2020, 1, 1).strftime('%Y-%m-%d')
@@ -332,7 +346,7 @@ def get_earliest_data_date(property_id, data_client):
         print(f"Error discovering the earliest data date for property {property_id}: {e}")
     return None
 
-def run_monthly_reports_for_property(selected_property_info, selected_report, cli_output_format=None, no_cache=False):
+def run_monthly_reports_for_property(selected_property_info, selected_report, google_auth, cli_output_format=None, no_cache=False):
     """Runs a report for every month since data collection began."""
     print(f"\nRunning monthly reports for '{selected_report['name']}' on property: {selected_property_info['display_name']}")
     
@@ -353,47 +367,69 @@ def run_monthly_reports_for_property(selected_property_info, selected_report, cl
         output_function = output_manager.save_report_to_file
         output_key = 'txt'
     
-    current_date = earliest_date.replace(day=1)
-    end_loop_date = datetime.now().date()
+    # The loop starts from the first day of the month of the earliest data
+    loop_date = earliest_date.replace(day=1)
+    today = datetime.now().date()
 
-    while current_date <= end_loop_date:
-        start_of_month = current_date.strftime("%Y-%m-%d")
-        end_of_month_date = current_date + relativedelta(months=1) - timedelta(days=1)
-        end_of_month = end_of_month_date.strftime("%Y-%m-%d")
+    while loop_date <= today:
+        # Determine the exact start and end dates for the API query
+        first_day_of_month = loop_date
+        last_day_of_month = loop_date + relativedelta(months=1) - timedelta(days=1)
 
-        month_str = current_date.strftime("%Y-%m")
-        print(f"Running report for {month_str}...")
+        # First month might be partial
+        start_date = max(first_day_of_month, earliest_date)
+        
+        # Last month might be partial
+        end_date = min(last_day_of_month, today)
+        
+        # If the calculated start date is after the calculated end date, it means we're in the future.
+        if start_date > end_date:
+            break
+
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
+
+        print(f"Running report for {start_date_str} to {end_date_str}...")
+
+        # Determine if the month is partial for filename and display
+        is_full_month = (start_date.day == 1 and end_date.day == last_day_of_month.day)
+        
+        if is_full_month:
+            filename_date_str = start_date.strftime("%Y-%m")
+        else:
+            filename_date_str = f"{start_date_str}_to_{end_date_str}"
 
         report_data = run_dynamic_report(
             selected_report['module'],
             selected_property_info['property_id'],
-            start_of_month,
-            end_of_month,
+            start_date_str,
+            end_date_str,
+            google_auth,
             no_cache=no_cache
         )
 
         if report_data:
-            report_data['date_range'] = f"{start_of_month} to {end_of_month}"
+            report_data['date_range'] = f"{start_date_str} to {end_date_str}"
             
-            # For file-based outputs, we generate a specific filename
             if output_key != 'console':
-                 filename = f"{selected_report['module']}_{selected_property_info['property_id']}_{month_str}.{output_key.split('_')[0]}"
-                 # The save_report_to_file function is simpler and needs a direct filename
+                 # Use the appropriate filename string
+                 filename = f"{selected_report['module']}_{selected_property_info['property_id']}_{filename_date_str}.{output_key.split('_')[0]}"
+                 
                  if output_function == output_manager.save_report_to_file:
                      output_function(report_data, filename)
-                 else: # Other file-based savers have a different signature
-                     output_function(report_data, selected_property_info, start_of_month, end_of_month)
+                 else:
+                     output_function(report_data, selected_property_info, start_date_str, end_date_str)
 
-            else: # Should not happen due to the check above, but as a fallback
-                output_function(report_data, selected_property_info, start_of_month, end_of_month)
+            else:
+                output_function(report_data, selected_property_info, start_date_str, end_date_str)
         else:
-            print(f"  -> Failed to generate report for {month_str}.")
+            print(f"  -> Failed to generate report for {start_date_str} to {end_date_str}.")
 
-        current_date += relativedelta(months=1)
+        loop_date += relativedelta(months=1)
 
     print("\nMonthly report generation complete.")
 
-def run_dynamic_report(report_module_name, property_id, start_date, end_date, no_cache=False):
+def run_dynamic_report(report_module_name, property_id, start_date, end_date, google_auth, no_cache=False):
     """Dynamically imports and runs a report module for a given date range, with caching."""
     
     cache_key_data = {"property_id": property_id, "report_module": report_module_name, "start_date": start_date, "end_date": end_date}
@@ -417,7 +453,23 @@ def run_dynamic_report(report_module_name, property_id, start_date, end_date, no
         module_path = f"reports.{report_module_name}"
         report_module = importlib.import_module(module_path)
         print(f"\nRunning '{report_module_name.replace('_', ' ').title()}' report for property ID: {property_id} (API call)")
-        report_data = report_module.run_report(property_id, data_client, start_date, end_date)
+        
+        # Inspect the signature of the run_report function
+        sig = inspect.signature(report_module.run_report)
+        params = sig.parameters
+        
+        # Prepare arguments for the run_report function
+        run_report_args = {
+            "property_id": property_id,
+            "data_client": data_client,
+            "start_date": start_date,
+            "end_date": end_date
+        }
+        
+        if 'google_auth' in params:
+            run_report_args['google_auth'] = google_auth
+        
+        report_data = report_module.run_report(**run_report_args)
         
         if report_data:
             os.makedirs("cache", exist_ok=True)
@@ -434,7 +486,7 @@ def run_dynamic_report(report_module_name, property_id, start_date, end_date, no
         print(f"An error occurred while running the report: {e}")
         return None
 
-def run_report_for_all_properties(no_cache=False):
+def run_report_for_all_properties(google_auth, no_cache=False):
     """Runs the Session Source / Medium report for all available properties and aggregates the data."""
     print("Running Session Source / Medium report for all available properties...")
     
@@ -452,7 +504,7 @@ def run_report_for_all_properties(no_cache=False):
 
     for prop_info in all_properties:
         print(f"\n--- Running report for: {prop_info['display_name']} ---")
-        report_data = run_dynamic_report('session_source_medium_report', prop_info['property_id'], start_date, end_date, no_cache=no_cache)
+        report_data = run_dynamic_report('session_source_medium_report', prop_info['property_id'], start_date, end_date, google_auth, no_cache=no_cache)
         
         if report_data and report_data['rows']:
             if not headers: headers = ["property_name"] + report_data['headers']
@@ -469,7 +521,7 @@ def run_report_for_all_properties(no_cache=False):
     output_function(aggregated_report_data, selected_property_info, start_date, end_date)
     print("\nFinished running aggregated report for all properties.")
 
-def run_all_reports_for_property(selected_property_info, cli_start_date=None, cli_end_date=None, cli_all_months=False, cli_output_format=None, no_cache=False):
+def run_all_reports_for_property(selected_property_info, google_auth, cli_start_date=None, cli_end_date=None, cli_all_months=False, cli_output_format=None, no_cache=False):
     """Runs all available reports for a single property."""
     start_date, end_date, _, verbose_date_range_str = get_selected_date_range(cli_start_date, cli_end_date, cli_all_months)
 
@@ -477,7 +529,7 @@ def run_all_reports_for_property(selected_property_info, cli_start_date=None, cl
         available_reports = get_available_reports()
         for report_key, report_info in sorted(available_reports.items(), key=lambda item: item[1]['name']):
             if report_info['module'] == 'all': continue
-            run_monthly_reports_for_property(selected_property_info, report_info, cli_output_format, no_cache)
+            run_monthly_reports_for_property(selected_property_info, report_info, google_auth, cli_output_format, no_cache)
         return
 
     print(f"\nRunning all available reports for property: {selected_property_info['display_name']}")
@@ -491,7 +543,7 @@ def run_all_reports_for_property(selected_property_info, cli_start_date=None, cl
     for report_key, report_info in sorted(available_reports.items(), key=lambda item: item[1]['name']):
         if report_info['module'] == 'all': continue
         
-        report_data = run_dynamic_report(report_info['module'], selected_property_info['property_id'], start_date, end_date, no_cache=no_cache)
+        report_data = run_dynamic_report(report_info['module'], selected_property_info['property_id'], start_date, end_date, google_auth, no_cache=no_cache)
         
         if report_data:
             report_data['date_range'] = verbose_date_range_str
@@ -508,14 +560,14 @@ def get_next_action():
         while True:
             char = msvcrt.getch()
             if char == b'\x1b': return "Q"
-            if char.upper() in [b'R', b'C', b'Q']:
+            if char.upper() in [b'R', b'C', b'Q', b'P']:
                 print(char.decode().upper())
                 return char.decode().upper()
     else:
         while True:
             next_action = input().upper()
-            if next_action in ["R", "C", "Q"]: return next_action
-            else: print("Invalid choice. Please enter R, C, or Q.")
+            if next_action in ["R", "C", "Q", "P"]: return next_action
+            else: print("Invalid choice. Please enter R, C, P, or Q.")
 
 def main():
     """Main function to orchestrate the interactive reporting session."""
@@ -531,53 +583,112 @@ def main():
     parser.add_argument('--run-all-properties-report', action='store_true', help='Run Session Source/Medium report for all properties.')
     parser.add_argument('--run-all-reports', action='store_true', help='Run all reports for a single property.')
     parser.add_argument('--no-cache', action='store_true', help='Ignore cached results.')
+    parser.add_argument('--refresh-properties', action='store_true', help='Force a refresh of the available GA4 properties list.')
     args = parser.parse_args()
 
-    if args.run_all_properties_report:
-        run_report_for_all_properties(no_cache=args.no_cache)
+    google_auth = ga4_client.get_google_auth()
+    if not google_auth:
+        print("Failed to authenticate with Google. Please check your credentials.")
         return
+
+    if args.run_all_properties_report:
+        run_report_for_all_properties(google_auth, no_cache=args.no_cache)
+        return
+
+    # Handle single-property non-interactive flows
+    selected_property_info = None
+    if args.property_id:
+        selected_property_info = get_property_info_by_id(args.property_id)
+        if not selected_property_info:
+            return
 
     if args.run_all_reports:
-        if not args.property_id:
+        if not selected_property_info:
             print("Error: --run-all-reports requires a --property-id.")
             return
-        selected_property_info = get_property_info_by_id(args.property_id)
-        if not selected_property_info: return
-        run_all_reports_for_property(selected_property_info, args.start_date, args.end_date, args.all_months, args.output_format, args.no_cache)
+        run_all_reports_for_property(selected_property_info, google_auth, args.start_date, args.end_date, args.all_months, args.output_format, args.no_cache)
         return
 
+    # Variables to persist across property/report changes
+    selected_report = None
+    start_date = args.start_date
+    end_date = args.end_date
+    verbose_date_range_str = None
+
     while True:
-        selected_property_info = get_selected_property(args.property_id) if not 'selected_property_info' in locals() else locals()['selected_property_info']
+        if not selected_property_info:
+            selected_property_info = get_selected_property(refresh=args.refresh_properties)
+            args.refresh_properties = False # Only refresh once per session startup
+
         if not selected_property_info: break
 
         while True:
             available_reports = get_available_reports()
-            selected_report = get_selected_report(available_reports, args.report)
+            
+            # Only ask for report if it's not already selected (e.g., from 'P' action)
+            if not selected_report:
+                selected_report = get_selected_report(available_reports, args.report)
+            
             if not selected_report: break
 
             if selected_report['module'] == 'all':
-                run_all_reports_for_property(selected_property_info, args.start_date, args.end_date, args.all_months, args.output_format, args.no_cache)
+                run_all_reports_for_property(selected_property_info, google_auth, args.start_date, args.end_date, args.all_months, args.output_format, args.no_cache)
                 if args.property_id: return
             else:
-                start_date, end_date, _, verbose_date_range_str = get_selected_date_range(args.start_date, args.end_date, args.all_months)
+                # Only ask for date range if it's not already determined (e.g., from 'P' or 'R' action)
+                if not start_date:
+                    start_date, end_date, _, verbose_date_range_str = get_selected_date_range(args.start_date, args.end_date, args.all_months)
+                
                 if start_date == "all-months":
-                    run_monthly_reports_for_property(selected_property_info, selected_report, args.output_format, args.no_cache)
+                    run_monthly_reports_for_property(selected_property_info, selected_report, google_auth, args.output_format, args.no_cache)
                 else:
-                    report_data = run_dynamic_report(selected_report['module'], selected_property_info['property_id'], start_date, end_date, no_cache=args.no_cache)
+                    report_data = run_dynamic_report(selected_report['module'], selected_property_info['property_id'], start_date, end_date, google_auth, no_cache=args.no_cache)
                     if report_data:
+                        # Re-derive verbose string if we only have raw dates but no verbose str yet
+                        if not verbose_date_range_str:
+                             verbose_date_range_str = f"{start_date} to {end_date}"
+                        
                         report_data['date_range'] = verbose_date_range_str
-                        output_function, _ = get_selected_output_format(args.output_format)
+                        output_function, _ = get_selected_output_format(args.output_format, selected_report['module'])
                         output_function(report_data, selected_property_info, start_date, end_date)
                     else:
                         print("Report generation failed.")
 
+            # If command-line args were used for both property and report, exit after one run
             if args.property_id and args.report: return
 
-            print("\n(R)un another report, (C)hange property, (Q)uit")
+            print("\n(R)un another report for this property")
+            print("(P)run same report for another property")
+            print("(C)hange property")
+            print("(Q)uit")
+            
             next_action = get_next_action()
-            if next_action == "C": break
-            if next_action == "Q": print("\nExiting..."); return
+            
+            if next_action == "R":
+                selected_report = None # Reset report but keep property and date range? 
+                start_date = args.start_date # Reset to CLI args (usually None)
+                end_date = args.end_date
+                verbose_date_range_str = None
+                continue
+            
+            if next_action == "P":
+                # Keep selected_report, start_date, end_date, verbose_date_range_str
+                selected_property_info = None # Trigger property selection
+                break
+                
+            if next_action == "C": 
+                selected_property_info = None
+                selected_report = None
+                start_date = args.start_date
+                end_date = args.end_date
+                verbose_date_range_str = None
+                break
+                
+            if next_action == "Q": 
+                print("\nExiting...")
+                return
         
+        # If command-line property ID was used, exit the outer loop after finishing the report loop
         if args.property_id: return
 
 

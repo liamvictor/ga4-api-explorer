@@ -1,3 +1,4 @@
 google-analytics-data
 google-analytics-admin
 python-dateutil
+Jinja2

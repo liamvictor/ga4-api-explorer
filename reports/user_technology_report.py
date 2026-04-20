@@ -6,6 +6,7 @@ def run_report(property_id, data_client, start_date, end_date):
     """
     Runs a User Technology report to show audience's browsers, operating systems,
     and device categories, ordered by the total number of users.
+    Includes bounce rate for deeper engagement analysis.
     """
     
     # Define the dimensions and metrics for the report.
@@ -19,6 +20,7 @@ def run_report(property_id, data_client, start_date, end_date):
         Metric(name="totalUsers"),
         Metric(name="engagedSessions"),
         Metric(name="engagementRate"),
+        Metric(name="bounceRate"),
     ]
     
     # Order the results by the total number of users in descending order.
@@ -59,7 +61,8 @@ def run_report(property_id, data_client, start_date, end_date):
             row_data.append(value.value)
         # Add metric values, formatting floats where necessary
         for i, value in enumerate(row.metric_values):
-            if response.metric_headers[i].name == 'engagementRate':
+            metric_name = response.metric_headers[i].name
+            if metric_name in ['engagementRate', 'bounceRate']:
                 try:
                     # Format as a percentage with two decimal places.
                     rate = float(value.value) * 100
