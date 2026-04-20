@@ -26,7 +26,18 @@ A service account is a special type of Google account intended to represent a no
 6.  Click **CONTINUE**.
 7.  You can skip the "Grant users access to this service account" step for now. Click **DONE**.
 
-## 3. Grant Service Account Access in Google Analytics
+## 3. Create and Download Service Account Key
+
+To use the service account to authenticate your scripts, you need to create a JSON key file and download it to your local machine.
+
+1.  In the "Service Accounts" section of the Google Cloud Console, find the service account you just created.
+2.  In the "Actions" column, click the three dots and select **Manage keys**.
+3.  Click **ADD KEY > Create new key**.
+4.  Select **JSON** as the key type.
+5.  Click **CREATE**.
+6.  The JSON key file will be automatically downloaded to your local machine. **Keep this file secure!**
+
+## 4. Grant Service Account Access in Google Analytics
 
 You now need to grant the newly created service account access to your Google Analytics 4 properties. You can do this at either the **Account level** (granting access to all properties within that account) or at the individual **Property level**. Granting access at the Account level is recommended if you want the service account to access all properties within it.
 

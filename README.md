@@ -107,20 +107,29 @@ Here is a list of the reports currently available and what they provide:
 
 *   **AI Traffic Acquisition Report:** Isolates and details traffic from known AI discovery tools and chatbots (e.g., ChatGPT, Gemini, Perplexity), helping you measure your visibility in generative search.
 *   **Channel Performance Trends:** An interactive HTML report that uses the `yearMonth` dimension to track traffic and leads for each channel over time, featuring a built-in line chart.
+*   **Channel Overview Report:** Shows sessions, engaged sessions, engagement rate, active users, and leads, broken down by GA4 default channel groupings.
+*   **Cohort Retention Report:** Measures how well you retain users over time, showing the percentage of users who return to your site in the weeks following their first visit.
 *   **Device Share & Engagement Report:** Calculates the percentage share of total traffic for each device category (Desktop, Mobile, Tablet) and includes bounce rates to identify platform-specific issues.
-*   **Top 5 Channels Comparison:** An interactive HTML report that ranks all channels by a selectable metric (Sessions, Leads, etc.) and trends the top 5 performers over time in a multi-line chart.
-*   **Channel Overview Report:** Shows new users and engaged sessions broken down by your GA4 default channel groupings.
+*   **Device Type Historical Report:** A multi-month trend report for device categories, allowing you to see how your audience's technology mix is evolving over time.
+*   **Device Type Report:** Provides a snapshot of performance (users, engagement, bounce rate) across different device categories.
+*   **File Downloads Report:** Tracks downloads of various file types (PDF, DOCX, ZIP, etc.) to understand which resources are most popular with your users.
+*   **High Engagement Pages Report:** Identifies pages with above-average engagement rates among those with significant traffic, highlighting your most "sticky" content.
 *   **Landing Pages Report:** Lists the top 25 landing pages by sessions, including active users, new users, and engagement rate.
 *   **Lead Quality by Channel Report:** Focuses on lead generation by combining total traffic (sessions, active users) with specific 'generate_lead' event counts and calculating a lead conversion rate for each channel.
+*   **Low Engagement Pages Report:** Flags pages with below-average engagement despite having high traffic, identifying potential candidates for content or UX improvement.
 *   **Monthly Acquisition Trend Report:** Provides a month-by-month view of total users, new users, sessions, conversions, and engagement rate, ideal for long-term trend analysis.
 *   **New vs. Returning by Channel Report:** Breaks down the 'New vs. Returning' metrics by acquisition channel, showing which channels are better at bringing back users.
 *   **New vs. Returning Engagement Report:** Compares engagement metrics (active users, sessions, duration) between new and returning visitors to see if you are successfully building an audience.
+*   **Outbound Click Tracking Report:** Monitors clicks on links that lead users away from your site, helping you understand which external resources or partners you are driving traffic to.
 *   **Screen Size Engagement Report:** Analyzes how different screen resolutions impact user engagement and bounce rate, highlighting potential responsive design issues.
 *   **Session Source / Medium Report:** Details total users and new users based on the session's source and medium (e.g., "google / organic", "facebook / cpc").
+*   **Top 5 Channels Comparison:** An interactive HTML report that ranks all channels by a selectable metric (Sessions, Leads, etc.) and trends the top 5 performers over time in a multi-line chart.
 *   **Top 5 Cities by Active Users:** Ranks the top 5 cities based on active users, providing geographical insights into your audience.
 *   **Top 25 Pages by Views:** Lists the top 25 most viewed pages on your site, indicating popular content.
 *   **Traffic Acquisition Report:** A detailed report showing session default channel group, session source/medium, total users, new users, engaged sessions, engagement rate, and conversions, providing a comprehensive view of traffic quality.
 *   **User Technology Report:** Provides insights into your audience's technology, including device category, operating system, browser, total users, engaged sessions, engagement rate, and bounce rate, useful for optimising compatibility and user experience.
+*   **UTM Campaign Performance Report:** Details sessions, engaged sessions, and conversions for each of your UTM campaign names.
+*   **UTM Full Content & Landing Page Report:** A highly cleaned report that strips common tracking parameters (gclid, msclkid, fbclid, Marketo/HubSpot IDs) from landing page URLs and re-aggregates the data for a consolidated view of campaign paths.
 
 ## How to Add a New Report
 
