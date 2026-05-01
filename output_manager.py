@@ -31,7 +31,7 @@ def _generate_table_html(headers, rows):
         formatted_rows.append([_format_value(cell) for cell in row])
         
     table_html = """
-    <table class="table table-striped table-bordered">
+    <table id="reportTable" class="table table-striped table-bordered">
         <thead>
             <tr>
                 {}
@@ -273,6 +273,172 @@ def save_to_html(report_data, selected_property_info, start_date, end_date):
             return
         except Exception as e:
             print(f"Error generating specialized HTML report: {e}. Falling back to standard format.")
+
+    # Specialized Top Campaign Daily Trend Report
+    if report_data.get("special_type") == "top_campaign_daily_trend":
+        sanitized_property_name = _sanitize_name(selected_property_info['display_name'])
+        property_output_dir = os.path.join("output", sanitized_property_name)
+        os.makedirs(property_output_dir, exist_ok=True)
+        
+        report_title = report_data.get("title", "Top Campaign Daily Trend")
+        sanitized_report_title = _sanitize_name(report_title)
+        filename = f"{sanitized_report_title}-{start_date}-to-{end_date}.html"
+        filepath = os.path.join(property_output_dir, filename)
+        
+        try:
+            from jinja2 import Environment, FileSystemLoader
+            env = Environment(loader=FileSystemLoader('templates'))
+            template = env.get_template('top_campaign_daily_trend_template.html')
+            
+            # Convert explanation from Markdown to HTML
+            explanation = report_data.get("explanation", "")
+            explanation_html = _markdown_to_html(explanation)
+            
+            html_content = template.render(
+                report_title=report_data.get("title"),
+                property_display_name=selected_property_info['display_name'],
+                property_id=selected_property_info['property_id'],
+                date_range=report_data.get("date_range", f"{start_date} to {end_date}"),
+                campaign_names=report_data.get("campaign_names"),
+                dates=report_data.get("dates"),
+                json_data=json.dumps(report_data.get("json_data")),
+                explanation_html=explanation_html,
+                now=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            print(f"Successfully saved specialized daily trend report to {filepath}")
+            return
+        except Exception as e:
+            print(f"Error generating specialized HTML report: {e}. Falling back to standard format.")
+
+    # Specialized Channel Traffic by Hour Report
+    if report_data.get("special_type") == "channel_traffic_by_hour":
+        sanitized_property_name = _sanitize_name(selected_property_info['display_name'])
+        property_output_dir = os.path.join("output", sanitized_property_name)
+        os.makedirs(property_output_dir, exist_ok=True)
+        
+        report_title = report_data.get("title", "Channel Traffic by Hour")
+        sanitized_report_title = _sanitize_name(report_title)
+        filename = f"{sanitized_report_title}-{start_date}-to-{end_date}.html"
+        filepath = os.path.join(property_output_dir, filename)
+        
+        try:
+            from jinja2 import Environment, FileSystemLoader
+            env = Environment(loader=FileSystemLoader('templates'))
+            template = env.get_template('channel_traffic_by_hour_template.html')
+            
+            # Convert explanation from Markdown to HTML
+            explanation = report_data.get("explanation", "")
+            explanation_html = _markdown_to_html(explanation)
+
+            # Pre-calculate tables for static HTML display
+            hours = report_data.get("hours")
+            channels = report_data.get("channels")
+            json_data = report_data.get("json_data")
+            category_label = report_data.get("category_label", "Channel")
+            time_label = report_data.get("time_label", "Hour")
+
+            # 1. Totals Table
+            totals_headers = [category_label, "Sessions"]
+            totals_rows = []
+            grand_total = 0
+            for ch in channels:
+                ch_total = 0
+                for h in hours:
+                    # Try both padded and unpadded hour strings (for hourly reports)
+                    h_unpadded = str(int(h)) if h.isdigit() else h
+                    h_data = json_data.get(h, json_data.get(h_unpadded, {}))
+                    ch_total += h_data.get(ch, {}).get('sessions', 0)
+                totals_rows.append([ch, ch_total])
+                grand_total += ch_total
+            totals_html = _generate_table_html(totals_headers, totals_rows)
+            # Add grand total to the bottom of the rendered HTML
+            totals_html = totals_html.replace("</tbody>", f'<tr class="table-secondary fw-bold"><td>Grand Total</td><td>{_format_value(grand_total)}</td></tr></tbody>')
+
+            # 2. Detail Table (Hourly or Daily)
+            detail_headers = [time_label] + channels + ["Total"]
+            detail_rows = []
+            ch_column_totals = {ch: 0 for ch in channels}
+            for h in hours:
+                # Format time label: add :00 only if it looks like an hour (0-23)
+                display_time = f"{h}:00" if (h.isdigit() and len(h) <= 2) else h
+                row = [display_time]
+                h_total = 0
+                h_unpadded = str(int(h)) if h.isdigit() else h
+                h_data = json_data.get(h, json_data.get(h_unpadded, {}))
+                
+                for ch in channels:
+                    val = h_data.get(ch, {}).get('sessions', 0)
+                    row.append(val)
+                    h_total += val
+                    ch_column_totals[ch] += val
+                row.append(h_total)
+                detail_rows.append(row)
+            
+            detail_html = _generate_table_html(detail_headers, detail_rows)
+            # Add totals row to the bottom
+            footer_cells = ["<td>Total</td>"]
+            for ch in channels:
+                footer_cells.append(f"<td>{_format_value(ch_column_totals[ch])}</td>")
+            footer_cells.append(f"<td>{_format_value(grand_total)}</td>")
+            detail_html = detail_html.replace("</tbody>", f'<tr class="table-secondary fw-bold">{"".join(footer_cells)}</tr></tbody>')
+
+            html_content = template.render(
+                report_title=report_data.get("title"),
+                property_display_name=selected_property_info['display_name'],
+                property_id=selected_property_info['property_id'],
+                date_range=report_data.get("date_range", f"{start_date} to {end_date}"),
+                hours=hours,
+                channels=channels,
+                category_label=category_label,
+                time_label=time_label,
+                json_data=json.dumps(json_data), # Keep for Chart.js
+                explanation_html=explanation_html,
+                totals_html=totals_html,
+                hourly_html=detail_html
+            )
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            print(f"Successfully saved specialized report to {filepath}")
+            return
+        except Exception as e:
+            print(f"Error generating specialized HTML report: {e}. Falling back to standard format.")
+
+    # Specialized Top Campaign Daily Trend (used for Countries too)
+    if report_data.get("special_type") == "top_campaign_daily_trend":
+        sanitized_property_name = _sanitize_name(selected_property_info['display_name'])
+        property_output_dir = os.path.join("output", sanitized_property_name)
+        os.makedirs(property_output_dir, exist_ok=True)
+        
+        report_title = report_data.get("title", "Daily Trend")
+        sanitized_report_title = _sanitize_name(report_title)
+        filename = f"{sanitized_report_title}-{start_date}-to-{end_date}.html"
+        filepath = os.path.join(property_output_dir, filename)
+        
+        try:
+            from jinja2 import Environment, FileSystemLoader
+            env = Environment(loader=FileSystemLoader('templates'))
+            template = env.get_template('top_campaign_daily_trend_template.html')
+            
+            explanation_html = _markdown_to_html(report_data.get("explanation", ""))
+            
+            html_content = template.render(
+                report_title=report_data.get("title"),
+                property_display_name=selected_property_info['display_name'],
+                date_range=f"{start_date} to {end_date}",
+                campaign_names=report_data.get("campaign_names"),
+                dates=report_data.get("dates"),
+                json_data=json.dumps(report_data.get("json_data")),
+                explanation_html=explanation_html,
+                now=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            print(f"Successfully saved specialized daily trend report to {filepath}")
+            return
+        except Exception as e:
+            print(f"Error generating specialized daily trend HTML report: {e}. Falling back to standard format.")
 
     if not report_data or not report_data.get("rows"):
         print("No data to save.")
